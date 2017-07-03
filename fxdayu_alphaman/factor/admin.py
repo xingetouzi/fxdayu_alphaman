@@ -3,11 +3,26 @@
 from ipyparallel import Client
 from functools import partial
 import pandas as pd
+import os
 
-def apply(func, *args, **kwargs):
+
+def _apply(func, *args, **kwargs):
     return partial(func, *args, **kwargs)()
 
+
+# 通过因子名称获取指定因子
+def _get_factor(factor_name, factor_package_name):
+    import importlib
+    module = importlib.import_module("%s.%s" % (factor_package_name,
+                                                factor_name))
+    factor = getattr(module,
+                     factor_name)
+    return factor
+
+
 class Admin(object):
+    PACKAGE_NAME = os.environ.get("FXDAYU_FACTOR_PACKAGE_NAME", "factors")
+
     def __init__(self, *all_factors_name):
         self._all_factors_name = all_factors_name
         self._all_factors_value = {}
@@ -34,7 +49,6 @@ class Admin(object):
 
         def strategy_fun(gather, unit):
             return gather + unit
-
 
         # 因子累加
         gather_result = reduce(strategy_fun, factor_value_list)
@@ -67,7 +81,6 @@ class Admin(object):
                                     包含一列factor值)
                 "weight": 加权方式 (str)
         """
-
 
         import numpy as np
         from utility import MultiFactor
@@ -156,7 +169,6 @@ class Admin(object):
 
         return multifactor
 
-
     # 获取因子的ic序列
     def get_factors_ic_df(self,
                           factor_name_list,
@@ -206,14 +218,15 @@ class Admin(object):
             data = data.replace(to_replace=0, value=np.NaN)
             return data
 
-        if (price is None) :
+        if (price is None):
             price_data = get_price_data(pool.tolist(), start, end, max_window=max(periods))
             price = price_data.minor_xs("close")
 
-        ic_list  = []
+        ic_list = []
         for factor_value in factor_value_list:
             # 持股收益-逐只
-            stocks_holding_return = utils.get_clean_factor_and_forward_returns(factor_value, price, quantiles=quantiles, periods=periods)
+            stocks_holding_return = utils.get_clean_factor_and_forward_returns(factor_value, price, quantiles=quantiles,
+                                                                               periods=periods)
             ic = performance.factor_information_coefficient(stocks_holding_return)
             ic_list.append(ic)
 
@@ -222,9 +235,9 @@ class Admin(object):
             ic_table = []
             for i in range(len(ic_list)):
                 ic_by_period = pd.DataFrame(ic_list[i][period])
-                ic_by_period.columns = [factor_name_list[i],]
+                ic_by_period.columns = [factor_name_list[i], ]
                 ic_table.append(ic_by_period)
-            ic_df_dict[period] = pd.concat(ic_table,axis=1)
+            ic_df_dict[period] = pd.concat(ic_table, axis=1)
 
         return ic_df_dict
 
@@ -232,7 +245,7 @@ class Admin(object):
     def get_ic_weight_df(self,
                          ic_df,
                          holding_period,
-                         rollback_period = 120):
+                         rollback_period=120):
         """
         输入ic_df(ic值序列矩阵),指定持有期和滚动窗口，给出相应的样本协方差矩阵
         :param ic_df: ic值序列矩阵 （pd.Dataframe），索引（index）为datetime,columns为各因子名称。
@@ -384,7 +397,7 @@ class Admin(object):
                               start,
                               end,
                               periods=(1, 5, 10),
-                              quantiles = 5,
+                              quantiles=5,
                               price=None
                               ):
 
@@ -428,17 +441,15 @@ class Admin(object):
             data = data.replace(to_replace=0, value=np.NaN)
             return data
 
-
         # 判断是否结果为空,为空则返回空字典
         if len(factor_value) == 0:
             return None
 
         pool = factor_value.index.levels[1]
 
-        if (price is None) :
+        if (price is None):
             price_data = get_price_data(pool.tolist(), start, end, max_window=max(periods))
             price = price_data.minor_xs("close")
-
 
         ################################################################################
         # 以下计算各绩效指标
@@ -453,20 +464,20 @@ class Admin(object):
                                                                                              periods=periods)
 
         # 按quantile区分的持股平均收益（减去了总体平均值）
-        performance["mean_return_by_q"] = alphalens.performance.mean_return_by_quantile(performance["holding_return"], by_date=True, demeaned=True)[0]
+        performance["mean_return_by_q"] = \
+            alphalens.performance.mean_return_by_quantile(performance["holding_return"], by_date=True, demeaned=True)[0]
 
         # 因子的IC值
         performance["ic"] = alphalens.performance.factor_information_coefficient(performance["holding_return"])
 
         # 平均IC值-月
-        performance["mean_ic_by_M"] = alphalens.performance.mean_information_coefficient(performance["holding_return"], by_time="M")
+        performance["mean_ic_by_M"] = alphalens.performance.mean_information_coefficient(performance["holding_return"],
+                                                                                         by_time="M")
 
         # 总平均IC值
         performance["mean_ic"] = alphalens.performance.mean_information_coefficient(performance["holding_return"])
 
-
         return performance
-
 
     def rank_performance(self,
                          factors_performance,
@@ -484,8 +495,7 @@ class Admin(object):
 
         return sorted(factors_performance,
                       key=lambda x: x.mean_ic.loc[target_period].values[0],
-                      reverse = (ascending == False))
-
+                      reverse=(ascending == False))
 
     # 遍历list中各因子的结果，计算其绩效表现，并汇总成列表——list
     def show_factors_performance(self,
@@ -494,7 +504,7 @@ class Admin(object):
                                  start,
                                  end,
                                  periods=(1, 5, 10),
-                                 quantiles = 5,
+                                 quantiles=5,
                                  price=None,
                                  parallel=False):
         """
@@ -537,39 +547,37 @@ class Admin(object):
                                                  factor_value_list[i],
                                                  start,
                                                  end,
-                                                 periods = periods,
-                                                 quantiles = quantiles,
-                                                 price = price))
+                                                 periods=periods,
+                                                 quantiles=quantiles,
+                                                 price=price))
             lview.wait(results)
             factors_performance = [result.get() for result in results if not (result.get() == None)]
             return factors_performance
         else:
             factors_performance = []
             for i in range(len(factor_name_list)):
-                result = apply(self.calculate_performance,
-                               factor_name_list[i],
-                               factor_value_list[i],
-                               start,
-                               end,
-                               periods = periods,
-                               quantiles = quantiles,
-                               price = price)
+                result = _apply(self.calculate_performance,
+                                factor_name_list[i],
+                                factor_value_list[i],
+                                start,
+                                end,
+                                periods=periods,
+                                quantiles=quantiles,
+                                price=price)
                 if not (result == None):
                     factors_performance.append(result)
             return factors_performance
 
-
     @staticmethod
-    #计算某个因子指定时间段的因子值
+    # 计算某个因子指定时间段的因子值
     def instantiate_factor_and_get_factor_value(factor_name,
                                                 pool,
                                                 start,
                                                 end,
-                                                Factor = None,
-                                                data = None,
+                                                Factor=None,
+                                                data=None,
                                                 data_config={"freq": "D", "api": "candle", "adjust": "after"},
-                                                para_dict = None,
-                                                factor_package_name="factors"
+                                                para_dict=None,
                                                 ):
         """
         计算某个因子指定时间段的因子值
@@ -583,7 +591,6 @@ class Admin(object):
                                        可通过该参数调用dxdayu_data api 访问到数据 (dict),
                                        与data参数二选一。
         :param para_dict (optional): 外部指定因子里所用到的参数集(dict),为空则不修改原有参数。 形如:{"fast":5,"slow":10}
-        :param factor_package_name: 因子所在的package名称 (str)
         :return: factor_value:因子值　格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
                包含一列factor值。形如：
                             -----------------------------------
@@ -604,38 +611,27 @@ class Admin(object):
         from fxdayu_data import DataAPI
         import datetime
 
-        # 通过因子名称获取指定因子
-        def get_factor(factor_name,
-                        factor_package_name="factors"):
-            import importlib
-            module = importlib.import_module("%s.%s" % (factor_package_name,
-                                                        factor_name))
-            factor = getattr(module,
-                             factor_name)
-            return (factor)
-
-        #实例化因子类
+        # 实例化因子类
         if Factor is None:
-            factor = get_factor(factor_name,
-                                factor_package_name)()
+            factor = _get_factor(factor_name, Admin.PACKAGE_NAME)()
         else:
             factor = Factor
 
-        #接收外部传入的参数
+        # 接收外部传入的参数
         if para_dict:
             for para in para_dict.keys():
-                setattr(factor,para,para_dict[para])
+                setattr(factor, para, para_dict[para])
 
         if data is None:
-            pn_data = DataAPI.get(symbols = tuple(pool),
-                                  start = start-datetime.timedelta(days=factor.max_window) ,
-                                  end = end,
+            pn_data = DataAPI.get(symbols=tuple(pool),
+                                  start=start - datetime.timedelta(days=factor.max_window),
+                                  end=end,
                                   **data_config)
         else:
             pn_data = data
 
         # 因子计算结果获取
-        factor_value = factor.factor(pn_data, update = True)
+        factor_value = factor.factor(pn_data, update=True)
 
         return factor_value
 
@@ -646,11 +642,10 @@ class Admin(object):
                             pool,
                             start,
                             end,
-                            Factor = None,
-                            data = None,
-                            data_config = {"freq": "D", "api": "candle", "adjust": "after"},
-                            factor_package_name="factors",
-                            parallel = False):
+                            Factor=None,
+                            data=None,
+                            data_config={"freq": "D", "api": "candle", "adjust": "after"},
+                            parallel=False):
         """
         # 枚举不同参数下的所得到的不同因子值
         :param factor_name: 因子名称（str） 需确保传入的factor_name、因子的类名、对应的module文件名一致(不含.后缀),因子才能正确加载
@@ -669,8 +664,6 @@ class Admin(object):
                  para_dict_list：不同参数集所组成的list（list），与factor_value_by_para_list一一对应。
                                  每个参数集格式为dict，形如:{"fast":5,"slow":10}
         """
-
-
 
         from itertools import product
 
@@ -692,8 +685,7 @@ class Admin(object):
                                                  Factor,
                                                  data,
                                                  data_config,
-                                                 para_dict,
-                                                 factor_package_name))
+                                                 para_dict))
 
             lview.wait(results)
             diff_results = [result.get() for result in results]
@@ -704,30 +696,29 @@ class Admin(object):
             for value in product(*para_range_dict.values()):
                 para_dict = dict(zip(keys, value))
                 para_dict_list.append(para_dict)
-                results.append(apply(self.instantiate_factor_and_get_factor_value,
-                                     factor_name,
-                                     pool,
-                                     start,
-                                     end,
-                                     Factor,
-                                     data,
-                                     data_config,
-                                     para_dict,
-                                     factor_package_name))
+                results.append(_apply(self.instantiate_factor_and_get_factor_value,
+                                      factor_name,
+                                      pool,
+                                      start,
+                                      end,
+                                      Factor,
+                                      data,
+                                      data_config,
+                                      para_dict))
             return results, para_dict_list
 
-    #获取admin下所有因子的计算结果
+    # 获取admin下所有因子的计算结果
     def get_all_factors_value(self,
                               pool,
                               start,
                               end,
-                              all_Factors_dict = None,
-                              all_factors_data_dict = None,
+                              all_Factors_dict=None,
+                              all_factors_data_dict=None,
                               all_factors_data_config_dict=None,
-                              all_factors_para_dict = None,
+                              all_factors_para_dict=None,
                               factor_package_name="factors",
-                              parallel = False,
-                              update = False):
+                              parallel=False,
+                              update=False):
         """
         计算admin下加载的所有因子的因子值
 
@@ -758,7 +749,6 @@ class Admin(object):
                                      值为 因子值(factor_value)　格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
                                      包含一列factor值。
         """
-
 
         if self._all_factors_value and not update:
             return self._all_factors_value
@@ -795,22 +785,19 @@ class Admin(object):
                                                                    all_Factors_dict[factor_name],
                                                                    all_factors_data_dict[factor_name],
                                                                    all_factors_data_config_dict[factor_name],
-                                                                   all_factors_para_dict[factor_name],
-                                                                   factor_package_name)
+                                                                   all_factors_para_dict[factor_name])
                 lview.wait(factors_value.values())
                 self._all_factors_value = {name: result.get() for name, result in factors_value.items()}
             else:
 
                 for factor_name in self._all_factors_name:
-                    self._all_factors_value[factor_name] = apply(self.instantiate_factor_and_get_factor_value,
-                                                                 factor_name,
-                                                                 pool,
-                                                                 start,
-                                                                 end,
-                                                                 all_Factors_dict[factor_name],
-                                                                 all_factors_data_dict[factor_name],
-                                                                 all_factors_data_config_dict[factor_name],
-                                                                 all_factors_para_dict[factor_name],
-                                                                 factor_package_name)
+                    self._all_factors_value[factor_name] = _apply(self.instantiate_factor_and_get_factor_value,
+                                                                  factor_name,
+                                                                  pool,
+                                                                  start,
+                                                                  end,
+                                                                  all_Factors_dict[factor_name],
+                                                                  all_factors_data_dict[factor_name],
+                                                                  all_factors_data_config_dict[factor_name],
+                                                                  all_factors_para_dict[factor_name])
             return self._all_factors_value
-
