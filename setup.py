@@ -12,10 +12,10 @@ with open(join(dirname(__file__), 'VERSION.txt'), 'rb') as f:
 requirements = [str(ir.req) for ir in parse_requirements("requirements.txt", session=False)]
 
 setup(
-    name='fxdayu_selector',
+    name='fxdayu_alphaman',
     version=version,
     description='大鱼因子选股框架',
-    packages=find_packages(exclude=["work_space"]),
+    packages=find_packages(exclude=[]),
     author='Tianrq',
     author_email='public@fxdayu.com',
     license='Apache License v2',
