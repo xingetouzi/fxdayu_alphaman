@@ -14,6 +14,9 @@ from fxdayu_alphaman.selector.utility import read_benchmark, standard_code_style
 from examples.selectors.DayMA import DayMA
 from fxdayu_alphaman.selector.admin import Admin
 
+# 配置选股器所在包路径
+Admin.PACKAGE_NAME = "examples.selectors"
+
 # 初始选股范围设置
 initial_codes = standard_code_style(json.load(open('test_stock_pool.json'))["test_stock_pool"])
 data_config = {"freq": "D", "api": "candle", "adjust": "after"}

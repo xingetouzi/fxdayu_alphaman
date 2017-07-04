@@ -15,7 +15,7 @@ setup(
     name='fxdayu_alphaman',
     version=version,
     description='大鱼因子选股框架',
-    packages=find_packages(exclude=[]),
+    packages=find_packages(),
     author='Tianrq',
     author_email='public@fxdayu.com',
     license='Apache License v2',
