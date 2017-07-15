@@ -11,7 +11,7 @@ from datetime import datetime
 
 from fxdayu_alphaman.selector.selector_analysis import *
 from fxdayu_alphaman.selector.utility import read_benchmark, standard_code_style
-from fxdayu_alphaman.examples.selectors import DayMA
+from fxdayu_alphaman.examples.selectors.DayMA import DayMA
 from fxdayu_alphaman.selector.admin import Admin
 
 
