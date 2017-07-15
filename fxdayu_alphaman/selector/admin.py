@@ -441,7 +441,7 @@ class Admin(object):
     def rank_performance(self,
                          strategies_performance,
                          target_period=10,
-                         target_indicator="sharpe_ratio",
+                         target_indicator="Sharpe ratio",
                          ascending=False
                          ):
         """
@@ -454,26 +454,27 @@ class Admin(object):
                    "downside_return","downside_distribution_features" 这些属性
         :param target_period: 指定持有期(int)
         :param target_indicator: 指定用于排序的绩效指标(str)
-                                 指标包含:annual_return
-                                         cum_returns_final
-                                         annual_volatility
-                                         sharpe_ratio
-                                         calmar_ratio
-                                         stability_of_timeseries
-                                         max_drawdown
-                                         omega_ratio
-                                         sortino_ratio
-                                         skew
-                                         kurtosis
-                                         tail_ratio
-                                         common_sense_ratio
-                                         information_ratio
-                                         alpha
-                                         beta
+                                 指标包含:
+                                        Annual return
+                                        Cumulative returns
+                                        Annual volatility
+                                        Sharpe ratio
+                                        Calmar ratio
+                                        Stability
+                                        Max drawdown
+                                        Omega ratio
+                                        Sortino ratio
+                                        Skew
+                                        Kurtosis
+                                        Tail ratio
+                                        Daily value at risk
+                                        Alpha
+                                        Beta
         :param ascending: 是否升序（bool）。默认False(降序）
         :return: 排序后的Performance对象所组成的列表
         """
 
+        print strategies_performance[0].key_performance_indicator["period_%s" % (target_period,)][target_indicator]
         return sorted(strategies_performance,
                       key=lambda x: x.key_performance_indicator["period_%s" % (target_period,)][target_indicator],
                       reverse=(ascending == False))
