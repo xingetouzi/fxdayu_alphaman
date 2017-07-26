@@ -40,7 +40,7 @@ prices = data.minor_xs("close")
 
 def unit_test1(data):
     volume001 = Factor_Volume001()
-    factor = volume001.factor(data)
+    factor = volume001.get_factor(data)
     return factor
 
 

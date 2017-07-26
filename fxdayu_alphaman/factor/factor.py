@@ -18,7 +18,7 @@ class Factor(object):
         self._factor = None
 
     #获得因子值
-    def factor(self, pn_data, update=False):
+    def get_factor(self, pn_data, update=False):
         """
         获得因子值
         :param pn_data:  pandas.Panel类型 一共三个维度。items axis 为股票代码,包含所有该因子跟踪的股票;
@@ -205,10 +205,10 @@ class Factor(object):
 
     @staticmethod
     # 将pandas.Dataframe格式的因子值调整为MultiIndex格式
-    def factor_df_to_factor_mi(factor):
+    def factor_df_to_factor_mi(factor_df):
         """
         将pandas.Dataframe格式的因子值调整为MultiIndex格式 如下
-        :param factor: 因子值 (pandas.Dataframe类型),index为datetime, colunms为股票代码(asset)。
+        :param factor_df: 因子值 (pandas.Dataframe类型),index为datetime, colunms为股票代码(asset)。
                           形如:
                                       　AAPL	　　　     BA	　　　CMG	　　   DAL	      LULU	　　
                             date
@@ -234,7 +234,7 @@ class Factor(object):
                                     -----------------------
         """
 
-        factor_data = factor.stack()
+        factor_data = factor_df.stack()
         factor_data = pd.DataFrame(factor_data)
         factor_data.reset_index(inplace=True)
         factor_data.columns = ["date", "asset", "factor"]
@@ -244,9 +244,9 @@ class Factor(object):
     # 计算因子
     def factor_calculator(self, pn_data):
         """
-        计算因子表
+        在此方法里实现因子的计算逻辑
 
-        :param ppn_data:  时间为索引，按资产分类的一张时间序列数据表，用于计算因子的初始所需数据
+        :param pn_data:  时间为索引，按资产分类的一张时间序列数据表，用于计算因子的初始所需数据
                          pandas.Panel类型 一共三个维度。items axis 为股票代码,包含所有该因子跟踪的股票;
                          在这之下,每只股票对应一个pandas.Dataframe,对应这只股票需要被访问到的数据,index为时间,columns为数据字段名称。
                          如:<class 'pandas.core.panel.Panel'>

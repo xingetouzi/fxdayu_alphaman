@@ -61,7 +61,7 @@ class Admin(object):
 
         return multifactor
 
-    # ic协方差权重加权合成因子---目标:最大化因子IC_IR
+    # 根据样本协方差矩阵加权合成因子---目标:最大化因子IC_IR
     def ic_cov_weighted_factor(self,
                                factor_name_list,
                                factor_value_list,
@@ -241,13 +241,13 @@ class Admin(object):
 
         return ic_df_dict
 
-    # 样本协方差矩阵估算 - unshrunk covariance
+    # 根据样本协方差矩阵估算结果求最大化IC_IR下的多因子组合权重 - unshrunk covariance
     def get_ic_weight_df(self,
                          ic_df,
                          holding_period,
                          rollback_period=120):
         """
-        输入ic_df(ic值序列矩阵),指定持有期和滚动窗口，给出相应的样本协方差矩阵
+        输入ic_df(ic值序列矩阵),指定持有期和滚动窗口，给出相应的多因子组合权重
         :param ic_df: ic值序列矩阵 （pd.Dataframe），索引（index）为datetime,columns为各因子名称。
                  如：
 
@@ -282,13 +282,13 @@ class Admin(object):
 
         return ic_weight_df.shift(holding_period)
 
-    # 样本协方差矩阵估算 - Ledoit-Wolf shrink covariance
+    # 根据样本协方差矩阵估算结果求最大化IC_IR下的多因子组合权重 - Ledoit-Wolf shrink covariance
     def get_ic_weight_shrink_df(self,
                                 ic_df,
                                 holding_period,
                                 rollback_period=120):
         """
-        输入ic_df(ic值序列矩阵),指定持有期和滚动窗口，给出相应的Ledoit-Wolf 压缩方法得到的协方差矩阵估算
+        输入ic_df(ic值序列矩阵),指定持有期和滚动窗口，给出相应的多因子组合权重
         :param ic_df: ic值序列矩阵 （pd.Dataframe），索引（index）为datetime,columns为各因子名称。
                  如：
 
