@@ -16,7 +16,7 @@ from fxdayu_alphaman.selector.admin import Admin
 
 
 # 配置选股器所在包路径
-Admin.PACKAGE_NAME = "examples.selectors"
+Admin.PACKAGE_NAME = "fxdayu_alphaman.examples.selectors"
 
 # 初始选股范围设置
 initial_codes = standard_code_style(json.load(open('test_stock_pool.json'))["test_stock_pool"])

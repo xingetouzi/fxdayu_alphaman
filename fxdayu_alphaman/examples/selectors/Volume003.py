@@ -53,7 +53,7 @@ class Volume003(Selector):
                                end = end,
                                **data_config)
 
-        factor = Factor_Volume003().factor(data , update= True)
+        factor = Factor_Volume003().get_factor(data , update= True)
 
         quantiles = self.get_quantiles(factor)
         selector_result = quantiles.copy()

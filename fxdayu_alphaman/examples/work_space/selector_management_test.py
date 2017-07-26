@@ -41,7 +41,7 @@ def manage_selector_result_test(selector_name_list, data_config_dict):
 
 #######################################################
 # 配置选股器所在包路径
-Admin.PACKAGE_NAME = "examples.selectors"
+Admin.PACKAGE_NAME = "fxdayu_alphaman.examples.selectors"
 
 # 确定要载入的选股器名称
 selector_name_list = ["DayMA", "DayMACD", "Volume003"]

@@ -632,7 +632,7 @@ class Admin(object):
             pn_data = data
 
         # 因子计算结果获取
-        factor_value = factor.factor(pn_data, update=True)
+        factor_value = factor.get_factor(pn_data, update=True)
 
         return factor_value
 
