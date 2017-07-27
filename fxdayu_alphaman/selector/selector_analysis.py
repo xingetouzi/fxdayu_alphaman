@@ -769,9 +769,8 @@ def plot_stock_returns_violin(returns,
 
     Parameters
     ----------
-    returns : pd.DataFrame - MultiIndex
-        DataFrame with date and quantile as rows MultiIndex,
-        return windows as columns, returns as values.
+    returns : pd.DataFrame
+        period holding returns.
     ax : matplotlib.Axes, optional
         Axes upon which to plot.
 
