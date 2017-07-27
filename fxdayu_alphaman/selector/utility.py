@@ -57,6 +57,8 @@ def read_benchmark(start, end, index_code="000300.XSHG", freq="D"):
     try:
         benchmark_value = DataAPI.candle((index_code,), freq=freq, start=start, end=end)
         benchmark.open = benchmark_value.minor_xs("open")
+        if len(benchmark.open)==0:
+            raise ValueError
         benchmark.high = benchmark_value.minor_xs("high")
         benchmark.low = benchmark_value.minor_xs("low")
         benchmark.close = benchmark_value.minor_xs("close")
