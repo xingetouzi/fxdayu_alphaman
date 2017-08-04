@@ -474,7 +474,6 @@ class Admin(object):
         :return: 排序后的Performance对象所组成的列表
         """
 
-        print strategies_performance[0].key_performance_indicator["period_%s" % (target_period,)][target_indicator]
         return sorted(strategies_performance,
                       key=lambda x: x.key_performance_indicator["period_%s" % (target_period,)][target_indicator],
                       reverse=(ascending == False))
