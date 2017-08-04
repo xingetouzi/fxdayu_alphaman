@@ -65,7 +65,7 @@ class Selector(object):
         :param end: 结束时间 (datetime)
         :param data (optional): 计算选股结果需用到的数据,根据计算需求自行指定。(可选)
         :param data_config (optional): 在data参数为None的情况下(不传入自定义数据),
-                                       可通过该参数调用dxdayu_data api 访问到数据 (dict),
+                                       可通过该参数调用fxdayu_data api 访问到数据 (dict),
                                        与data参数二选一。
         :return: selector_result: 选股器结果　格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
                             　　　 包含一列结果值。(1:选出,0:不选,-1:做空)  形如:
@@ -84,5 +84,5 @@ class Selector(object):
                                                     -----------------------
         """
 
-        return pd.DataFrame()
+        return pd.MultiIndex()
 

@@ -136,5 +136,5 @@ plt.show()
 plot_stock_returns_violin(performance_list[0]["downside_return"], return_type="downside")
 plt.show()
 # 3.累积收益曲线
-plot_cumulative_returns_by_quantile(performance_list[0]["mean_return"], period=10)
+plot_cumulative_returns(performance_list[0]["mean_return"], period=10)
 plt.show()

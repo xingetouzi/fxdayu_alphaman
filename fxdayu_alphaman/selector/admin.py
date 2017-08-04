@@ -737,7 +737,7 @@ class Admin(object):
         :param Selector (optional): 选股器(selector.selector.Selector object),可选.可以输入一个设计好的Selector类来执行计算.
         :param data (optional): 计算选股结果需用到的数据,根据计算需求自行指定。(可选)
         :param data_config (optional): 在data参数为None的情况下(不传入自定义数据),
-                                       可通过该参数调用dxdayu_data api 访问到数据 (dict),
+                                       可通过该参数调用fxdayu_data api 访问到数据 (dict),
                                        与data参数二选一。
         :param para_dict (optional): 外部指定选股器里所用到的参数集(dict),为空则不修改原有参数。 形如:{"fast":5,"slow":10}
         :return: selector_result: 选股器结果　格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
@@ -798,14 +798,14 @@ class Admin(object):
         """
         # 枚举选股器的不同参数
         :param selector_name: 选股器名称（str） 需确保传入的selector_name、选股器的类名、对应的module文件名一致(不含.后缀),选股器才能正确加载
-        :param para_range_dict: 述了selector当中待优化参数的选择空间（dict）。键为参数名称，值为range对象，表示优化空间的起始、终止、步长。
+        :param para_range_dict: 描述了selector当中待优化参数的选择空间（dict）。键为参数名称，值为range对象，表示优化空间的起始、终止、步长。
                如：para_range_dict = {“fast”：range(0,10,1),"slow":range(0,10,1)}.
         :param pool: 股票池范围（list),如：["000001.XSHE","600300.XSHG",......]
         :param start: 起始时间 (datetime)
         :param end: 结束时间 (datetime)
         :param Selector (optional): 选股器(selector.selector.Selector object),可选.可以输入一个设计好的Selector类来执行计算.
         :param data (optional): 计算选股结果需用到的数据,根据计算需求自行指定。(可选)
-        :param data_config (optional): 在data参数为None的情况下(不传入自定义数据),可通过该参数调用dxdayu_data api 访问到数据 (dict)
+        :param data_config (optional): 在data参数为None的情况下(不传入自定义数据),可通过该参数调用fxdayu_data api 访问到数据 (dict)
         :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
         :return: selector_result_by_para_list, para_dict_list
                  selector_result_by_para_list：不同参数下得到的选股结果所组成的list（list）
@@ -873,14 +873,14 @@ class Admin(object):
         :param pool: 股票池范围（list),如：["000001.XSHE","600300.XSHG",......]
         :param start: 起始时间 (datetime)
         :param end: 结束时间 (datetime)
-        :param all_Factors (optional):加载到admin下的所有Selector类(selector.selector.Selector object)构成的字典, 可选.
+        :param all_Selectors_dict(optional):加载到admin下的所有Selector类(selector.selector.Selector object)构成的字典, 可选.
                                       可以输入一系列设计好的选股器类(与Admin._all_selectors_name一一对应)直接执行计算.
                                       形如:{“selector_name_1”:Selector_1,selector_name_2”:Selector_2,...}
         :param all_selectors_data_dict （optional): 计算选股器需用到的自定义数据组成的字典（dict）,根据计算需求自行指定。
                                                     字典键名为所有载入的选股器的选股器名(admin._all_selectors_name),值为对应选股器所需的数据。
                                                     形如：{“selector_name_1”:data_1,selector_name_2”:data_2,...}
         :param all_selectors_data_config_dict (optional):  在all_selectors_data_dict参数为None的情况下(不传入自定义数据),
-                                                          可通过该参数调用dxdayu_data api 访问到数据 (dict).
+                                                          可通过该参数调用fxdayu_data api 访问到数据 (dict).
                                                           与 all_selectors_data_dict 二选一（未指定数据通过fxdayu_data api获取）.
                                                           字典键名为所有载入的选股器的选股器名(admin._all_selectors_name),
                                                           值为对应选股器所需的数据api访问参数设置dict(data_config)。
@@ -973,7 +973,7 @@ class Admin(object):
         输入一个列表,输出列表当中的指定阶数下(含该阶数)的所有组合方案。
 
         :param alist: 任意列表(list) 如[1,2,3]
-        :param order: 组合的最大阶数 (int) 如2
+        :param max_order: 组合的最大阶数 (int) 如2
         :return: 组合方案(list),当中的元素为元组(tuple),代表一种组合方案
                  形如[(1,),(2,),(3,),(1,2,),(1,3,),(2,3,)] (含1阶组合和2阶组合)
         """

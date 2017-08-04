@@ -145,10 +145,10 @@ def get_clean_factor_and_forward_returns(factor,
     return merged_data
 
 #获取一个时间序列列表，描述按某种持股方案得到的股票持有期收益
-def get_stocks_holding_return(stock_list, prices, list_name="", periods=(1,5,10)):
+def get_stocks_holding_return(stock_strategy, prices, strategy_name="", periods=(1,5,10)):
     """
     计算持股方案的股票持有期(periods)收益
-    :param stock_list: 一个MultiIndex Series的序列。索引为date (level 0) 和 asset (level 1),包含一列持有股票相对权重(目前在计算总体收益时并未生效)。
+    :param stock_strategy: 一个MultiIndex Series的序列。索引为date (level 0) 和 asset (level 1),包含一列持有股票相对权重(目前在计算总体收益时并未生效)。
                        其中asset的值为指定日期待持有的股票代码。形如:
                         -----------------------------------
                             date    |    asset   |
@@ -178,13 +178,13 @@ def get_stocks_holding_return(stock_list, prices, list_name="", periods=(1,5,10)
                 2014-10-17 15:00:00    18.349    17.535       NaN     7.272     9.611
                 2014-10-20 15:00:00    18.319    17.618       NaN     7.360     9.629
                 .....................................................................
-    :param list_name: 该持股方案的名称,可任意命名(str)
+    :param strategy_name: 该持股方案的名称,可任意命名(str)
     :param periods: 持有周期(tuple)
     :return: 该持股方案对应每一只股票的持有期收益。(pd.Dataframe)。
     """
-    stocks_return = get_clean_factor_and_forward_returns(stock_list, prices, quantiles=1, periods=periods)
+    stocks_return = get_clean_factor_and_forward_returns(stock_strategy, prices, quantiles=1, periods=periods)
     stocks_return = stocks_return.reset_index()
-    stocks_return["factor_quantile"] = list_name
+    stocks_return["factor_quantile"] = strategy_name
 
     return(stocks_return)
 
@@ -305,10 +305,10 @@ def get_downside_returns(factor,
 
     return merged_data
 
-def get_stocks_downside_return(stock_list, prices, prices_low, list_name="", periods=(1,5,10)):
+def get_stocks_downside_return(stock_strategy, prices, prices_low, strategy_name="", periods=(1,5,10)):
     """
     计算持股方案的股票下行(periods)收益
-    :param stock_list: 一个MultiIndex Series的序列。索引为date (level 0) 和 asset (level 1),包含一列持有股票相对权重(目前在计算总体收益时并未生效)。
+    :param stock_strategy: 一个MultiIndex Series的序列。索引为date (level 0) 和 asset (level 1),包含一列持有股票相对权重(目前在计算总体收益时并未生效)。
                        其中asset的值为指定日期待持有的股票代码。形如:
                         -----------------------------------
                             date    |    asset   |
@@ -339,15 +339,15 @@ def get_stocks_downside_return(stock_list, prices, prices_low, list_name="", per
                 2014-10-20 15:00:00    18.319    17.618       NaN     7.360     9.629
                 .....................................................................
     :param prices_low: 计算绩效时用到的的个股每日最低价格,pandas dataframe类型,形同prices
-    :param list_name: 该持股方案的名称,可任意命名(str)
+    :param strategy_name: 该持股方案的名称,可任意命名(str)
     :param periods: 持有周期(tuple)
     :return: 该持股方案对应每一只股票的下行收益。(pd.Dataframe)。
     """
 
-    stocks_downside_return = get_downside_returns(stock_list, prices, prices_low, periods=periods)
+    stocks_downside_return = get_downside_returns(stock_strategy, prices, prices_low, periods=periods)
     stocks_downside_return.fillna(0, inplace=True)
     stocks_downside_return= stocks_downside_return.reset_index()
-    stocks_downside_return["factor_quantile"]=list_name
+    stocks_downside_return["factor_quantile"]=strategy_name
 
     return(stocks_downside_return)
 
@@ -468,10 +468,10 @@ def get_upside_returns( factor,
 
     return merged_data
 
-def get_stocks_upside_return(stock_list, prices, prices_high, list_name="", periods=(1,5,10)):
+def get_stocks_upside_return(stock_strategy, prices, prices_high, strategy_name="", periods=(1,5,10)):
     """
     计算持股方案的股票上行(periods)收益
-    :param stock_list: 一个MultiIndex Series的序列。索引为date (level 0) 和 asset (level 1),包含一列持有股票相对权重(目前在计算总体收益时并未生效)。
+    :param stock_strategy: 一个MultiIndex Series的序列。索引为date (level 0) 和 asset (level 1),包含一列持有股票相对权重(目前在计算总体收益时并未生效)。
                        其中asset的值为指定日期待持有的股票代码。形如:
                         -----------------------------------
                             date    |    asset   |
@@ -502,15 +502,15 @@ def get_stocks_upside_return(stock_list, prices, prices_high, list_name="", peri
                 2014-10-20 15:00:00    18.319    17.618       NaN     7.360     9.629
                 .....................................................................
     :param prices_high: 计算绩效时用到的的个股每日最高价格,pandas dataframe类型,形同prices
-    :param list_name: 该持股方案的名称,可任意命名(str)
+    :param strategy_name: 该持股方案的名称,可任意命名(str)
     :param periods: 持有周期(tuple)
     :return: 该持股方案对应每一只股票的上行收益。(pd.Dataframe)。
     """
 
-    stocks_upside_return = get_upside_returns(stock_list, prices, prices_high, periods=periods)
+    stocks_upside_return = get_upside_returns(stock_strategy, prices, prices_high, periods=periods)
     stocks_upside_return.fillna(0, inplace=True)
     stocks_upside_return = stocks_upside_return.reset_index()
-    stocks_upside_return["factor_quantile"] = list_name
+    stocks_upside_return["factor_quantile"] = strategy_name
 
     return (stocks_upside_return)
 
@@ -566,10 +566,10 @@ def align_return_series(return_series,start,end):
     return(return_series.fillna(0))
 
 
-def get_stocklist_mean_return(stock_list,list_name,start,end,prices,periods=(1,5,10)):
+def get_stocklist_mean_return(stock_strategy,strategy_name,start,end,prices,periods=(1,5,10)):
     """
     计算某持股方案的平均日持有收益
-     :param stock_list: 一个MultiIndex Series的序列。索引为date (level 0) 和 asset (level 1),包含一列持有股票相对权重(目前在计算总体收益时并未生效)。
+     :param stock_strategy: 一个MultiIndex Series的序列。索引为date (level 0) 和 asset (level 1),包含一列持有股票相对权重(目前在计算总体收益时并未生效)。
                        其中asset的值为指定日期待持有的股票代码。形如:
                         -----------------------------------
                             date    |    asset   |
@@ -584,7 +584,7 @@ def get_stocklist_mean_return(stock_list,list_name,start,end,prices,periods=(1,5
                                     -----------------------
                                     |   LULU     |   2
                                     -----------------------
-    :param list_name: 该持股方案的名称,可任意命名(str)
+    :param strategy_name: 该持股方案的名称,可任意命名(str)
     :param start: 起始时间(datetime)
     :param end: 终止时间(datetime)
     :param prices: 计算绩效时用到的的个股每日价格,通常为收盘价（close）。
@@ -625,7 +625,7 @@ def get_stocklist_mean_return(stock_list,list_name,start,end,prices,periods=(1,5
                                             .................................................
     """
 
-    stocks_return = get_stocks_holding_return(stock_list,prices,list_name=list_name,periods=periods)
+    stocks_return = get_stocks_holding_return(stock_strategy,prices,strategy_name=strategy_name,periods=periods)
 
     # 获得持股平均收益
     mean_return = performance.mean_return_by_quantile(stocks_return.set_index(["date","asset"]), by_date=True, demeaned=False)[0]
@@ -683,14 +683,13 @@ holding period factor_quantile
 
     return(frame)
 
-def plot_cumulative_returns_by_quantile(quantile_returns, period=1, ax=None):
+def plot_cumulative_returns(stocklist_mean_return, period=1, ax=None):
     """
     Plots the cumulative returns of various factor quantiles.
 
     Parameters
     ----------
-    quantile_returns : pd.DataFrame
-        Cumulative returns by factor quantile.
+    stocklist_mean_return : pd.MultiIndex
     period: int, optional
         Period over which the daily returns are calculated
     ax : matplotlib.Axes, optional
@@ -705,7 +704,7 @@ def plot_cumulative_returns_by_quantile(quantile_returns, period=1, ax=None):
         f, ax = plt.subplots(1, 1, figsize=(18, 6))
 
 
-    ret_wide = quantile_returns.reset_index()\
+    ret_wide = stocklist_mean_return.reset_index()\
         .pivot(index='date', columns='factor_quantile', values=period)
 
     if period > 1:
@@ -742,6 +741,7 @@ def plot_distribution_of_returns(returns, period, return_type="", ax=None):
         period holding returns.
     period: int
         Period over which the daily returns are calculated
+    return_type: str
     ax : matplotlib.Axes, optional
         Axes upon which to plot.
 

@@ -589,7 +589,7 @@ class Admin(object):
         :param Factor (optional): 因子(factor.factor.Factor object),可选.可以输入一个设计好的Factor类来执行计算.
         :param data (optional): 计算因子需用到的数据,根据计算需求自行指定。(可选)
         :param data_config (optional): 在data参数为None的情况下(不传入自定义数据),
-                                       可通过该参数调用dxdayu_data api 访问到数据 (dict),
+                                       可通过该参数调用fxdayu_data api 访问到数据 (dict),
                                        与data参数二选一。
         :param para_dict (optional): 外部指定因子里所用到的参数集(dict),为空则不修改原有参数。 形如:{"fast":5,"slow":10}
         :return: factor_value:因子值　格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
@@ -657,7 +657,7 @@ class Admin(object):
         :param end: 结束时间 (datetime)
         :param Factor (optional): 因子(factor.factor.Factor object),可选.可以输入一个设计好的Factor类来执行计算.
         :param data (optional): 计算因子需用到的数据,根据计算需求自行指定。(可选)
-        :param data_config (optional): 在data参数为None的情况下(不传入自定义数据),可通过该参数调用dxdayu_data api 访问到数据 (dict)
+        :param data_config (optional): 在data参数为None的情况下(不传入自定义数据),可通过该参数调用fxdayu_data api 访问到数据 (dict)
         :param factor_package_name: 因子所在的package名称 (str)
         :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
         :return: factor_value_by_para_list, para_dict_list
@@ -726,14 +726,14 @@ class Admin(object):
         :param pool: 股票池范围（list),如：["000001.XSHE","600300.XSHG",......]
         :param start: 起始时间 (datetime)
         :param end: 结束时间 (datetime)
-        :param all_Factors (optional):加载到admin下的所有因子类(factor.factor.Factor object)构成的字典, 可选.
+        :param all_Factors_dict (optional):加载到admin下的所有因子类(factor.factor.Factor object)构成的字典, 可选.
                                       可以输入一系列设计好的Factor类(与Admin._all_factors_name一一对应)直接执行计算.
                                       形如:{“factor_name_1”:Factor_1,factor_name_2”:Factor_2,...}
         :param all_factors_data_dict （optional): 计算因子需用到的自定义数据组成的字典（dict）,根据计算需求自行指定。
                                                   字典键名为所有载入的因子的因子名(admin._all_factors_name),值为对应因子所需的数据。
                                                   形如：{“factor_name_1”:data_1,factor_name_2”:data_2,...}
         :param all_factors_data_config_dict (optional):  在all_factors_data_dict参数为None的情况下(不传入自定义数据),
-                                                         可通过该参数调用dxdayu_data api 访问到数据 (dict).
+                                                         可通过该参数调用fxdayu_data api 访问到数据 (dict).
                                                          与 all_factors_data_dict 二选一（未指定数据通过fxdayu_data api获取）.
                                                          字典键名为所有载入的因子的因子名(admin._all_factors_name),
                                                          值为对应因子所需的数据api访问参数设置dict(data_config)。
