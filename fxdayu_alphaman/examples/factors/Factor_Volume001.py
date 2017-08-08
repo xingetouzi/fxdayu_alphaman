@@ -8,7 +8,7 @@ from fxdayu_alphaman.factor.factor import Factor
 
 class Factor_Volume001(Factor):
 
-    c = 6
+    c = 4
 
     def calculate_volume001(self, data):
         # 逐支股票计算volume003因子
