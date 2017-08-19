@@ -166,11 +166,11 @@ class Factor(object):
 
         # 剔除有过多无效数据的个股
         empty_data = pd.isnull(factor_df).sum()
-        pools = empty_data[empty_data < len(factor_df) * 0.1].index  # 剔除有过多无效数据的个股
+        pools = empty_data[empty_data < len(factor_df) * 0.1].index  # 保留空值比例低于0.1的股票
         factor_df = factor_df.loc[:, pools]
 
-        # 剔除含空数据的截面
-        factor_df = factor_df.dropna()
+        # 剔除过多值为空的截面
+        factor_df = factor_df.dropna(thresh = len(factor_df.columns) * 0.9) # 保留空值比例低于0.9的截面
 
         # 获取行业分类信息
         X = get_industry_class(pools)
@@ -188,12 +188,12 @@ class Factor(object):
                 DataAll = pd.concat([X.T, x1.loc[i], factor_df.loc[i]], axis=1)
             else:
                 DataAll = pd.concat([X.T, factor_df.loc[i]], axis=1)
+            # 剔除截面中值含空的股票
             DataAll = DataAll.dropna()
             DataAll.columns = list(range(0, nfactors + 1))
-            regr = linear_model.LinearRegression()
-            regr.fit(np.matrix(DataAll.ix[:, 0:nfactors]), np.transpose(np.matrix(DataAll.ix[:, nfactors])))
-            residuals = regr.predict(np.matrix(DataAll.ix[:, 0:nfactors])) - np.transpose(
-                np.matrix(DataAll.ix[:, nfactors]))
+            regr = linear_model.LinearRegression(fit_intercept=False)
+            regr.fit(np.matrix(DataAll.iloc[:, 0:nfactors]), np.transpose(np.matrix(DataAll.iloc[:, nfactors])))
+            residuals = np.transpose(np.matrix(DataAll.iloc[:, nfactors])) -regr.predict(np.matrix(DataAll.iloc[:, 0:nfactors]))
             residuals = pd.DataFrame(data=residuals, index=np.transpose(np.matrix(DataAll.index.values)))
             residuals.index = DataAll.index.values
             residuals.columns = [i]

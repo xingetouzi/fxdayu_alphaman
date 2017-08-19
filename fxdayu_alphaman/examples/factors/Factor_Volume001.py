@@ -29,9 +29,9 @@ class Factor_Volume001(Factor):
 
         factor_volume001 = map(self.calculate_volume001, pn_data.iteritems())
         factor_volume001 = pd.concat(factor_volume001, axis=1)
-        # factor_volume001 = self.winsorize(factor_volume001) #去极值
-        # factor_volume001 = self.standardize(factor_volume001) #标准化
-        # factor_volume001 = self.neutralize(factor_volume001, factorIsMV=False) #行业、市值中性化
+        factor_volume001 = self.winsorize(factor_volume001) #去极值
+        factor_volume001 = self.standardize(factor_volume001) #标准化
+        factor_volume001 = self.neutralize(factor_volume001, factorIsMV=False) #行业、市值中性化
         factor_volume001 = self.factor_df_to_factor_mi(factor_volume001) #格式标准化
         factor_volume001 = self.get_factor_by_rankScore(factor_volume001, ascending=True) # 将因子用排序分值重构，并处理到0-1之间(默认为升序——因子越大 排序分值越大(越好)
                                                                                           # 具体根据因子对收益的相关关系而定，为正则应用升序,为负用降序)
