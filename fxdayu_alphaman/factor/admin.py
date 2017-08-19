@@ -90,7 +90,8 @@ class Admin(object):
 
         weight = ic_weight_df
         weighted_factor_value_list = []
-        for original_factor in factor_value_list:
+        for _factor in factor_value_list:
+            original_factor = _factor.copy()
             for date in original_factor.index.levels[0]:
                 try:
                     weight_by_date = weight[factor_name_list[0]].loc[date]
@@ -145,7 +146,8 @@ class Admin(object):
 
         weight = ic_weight_shrink_df
         weighted_factor_value_list = []
-        for original_factor in factor_value_list:
+        for _factor in factor_value_list:
+            original_factor = _factor.copy()
             for date in original_factor.index.levels[0]:
                 try:
                     weight_by_date = weight[factor_name_list[0]].loc[date]
