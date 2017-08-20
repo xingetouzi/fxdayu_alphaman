@@ -130,16 +130,7 @@ def get_clean_factor_and_forward_returns(factor,
 
         merged_data['group'] = groupby.astype('category')
 
-    merged_data = merged_data.dropna()
-
-    try:
-        merged_data['factor_quantile'] = utils.quantize_factor(merged_data,
-                                                               quantiles,
-                                                               bins,
-                                                               by_group)
-    except:
-        merged_data['factor_quantile'] = 1
-
+    merged_data['factor_quantile'] = 1
     merged_data = merged_data.dropna()
 
     return merged_data

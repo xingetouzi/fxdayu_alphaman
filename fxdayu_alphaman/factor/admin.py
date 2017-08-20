@@ -431,6 +431,7 @@ class Admin(object):
 
         """
         from utility import Performance
+        from factor_analysis import mean_information_coefficient
         from fxdayu_data import DataAPI
         import alphalens
         import numpy as np
@@ -473,11 +474,10 @@ class Admin(object):
         performance["ic"] = alphalens.performance.factor_information_coefficient(performance["holding_return"])
 
         # 平均IC值-月
-        performance["mean_ic_by_M"] = alphalens.performance.mean_information_coefficient(performance["holding_return"],
-                                                                                         by_time="M")
-
+        performance["mean_ic_by_M"] = mean_information_coefficient(performance["holding_return"],
+                                                                   by_time="M")
         # 总平均IC值
-        performance["mean_ic"] = alphalens.performance.mean_information_coefficient(performance["holding_return"])
+        performance["mean_ic"] = mean_information_coefficient(performance["holding_return"])
 
         return performance
 
