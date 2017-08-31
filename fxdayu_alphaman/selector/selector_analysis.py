@@ -106,7 +106,7 @@ def get_clean_factor_and_forward_returns(factor,
     if groupby is not None:
         if isinstance(groupby, dict):
             diff = set(factor.index.get_level_values(
-                'asset')) - set(groupby.keys())
+                'asset')) - set(list(groupby.keys()))
             if len(diff) > 0:
                 raise KeyError(
                     "Assets {} not in group mapping".format(
@@ -118,7 +118,7 @@ def get_clean_factor_and_forward_returns(factor,
                                     'asset')].values)
 
         if groupby_labels is not None:
-            diff = set(groupby.values) - set(groupby_labels.keys())
+            diff = set(groupby.values) - set(list(groupby_labels.keys()))
             if len(diff) > 0:
                 raise KeyError(
                     "groups {} not in passed group names".format(
@@ -545,7 +545,7 @@ def align_return_series(return_series,start,end):
     return_series = return_series.reset_index()
 
     # 将时间（date）全部标准化到收盘后（15:00:00）
-    return_series["date"] = map(time15, return_series["date"])
+    return_series["date"] = list(map(time15, return_series["date"]))
 
     series_name = return_series["factor_quantile"].loc[0]
 

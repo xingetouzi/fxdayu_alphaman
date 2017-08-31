@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import numpy as np
 import pandas as pd
 
 from fxdayu_alphaman.factor.factor import Factor
@@ -27,7 +26,7 @@ class Factor_Volume001(Factor):
     def factor_calculator(self, pn_data):
         # volume001
 
-        factor_volume001 = map(self.calculate_volume001, pn_data.iteritems())
+        factor_volume001 = list(map(self.calculate_volume001, pn_data.iteritems()))
         factor_volume001 = pd.concat(factor_volume001, axis=1)
         factor_volume001 = self.winsorize(factor_volume001) #去极值
         factor_volume001 = self.standardize(factor_volume001) #标准化

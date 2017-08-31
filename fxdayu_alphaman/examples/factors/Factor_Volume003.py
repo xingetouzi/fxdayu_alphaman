@@ -28,7 +28,7 @@ class Factor_Volume003(Factor):
     def factor_calculator(self, pn_data):
         # volume003
 
-        factor_volume003 = map(self.calculate_volume003, pn_data.iteritems())
+        factor_volume003 = list(map(self.calculate_volume003, pn_data.iteritems()))
         factor_volume003 = pd.concat(factor_volume003, axis=1)
         factor_volume003 = self.winsorize(factor_volume003) #去极值
         factor_volume003 = self.standardize(factor_volume003) #标准化

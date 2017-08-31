@@ -99,5 +99,5 @@ performance_list = admin.rank_performance(performance_list,
                                           target_period=10,
                                           ascending=False)
 
-print performance_list[0].mean_ic
-print performance_list[0].factor_name
+print (performance_list[0].mean_ic)
+print (performance_list[0].factor_name)

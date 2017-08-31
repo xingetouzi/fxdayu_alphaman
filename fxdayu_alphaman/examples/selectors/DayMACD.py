@@ -71,7 +71,7 @@ class DayMACD(Selector):
                                end = end,
                                **data_config)
 
-        selector_result = map(self.calculate_MACD_signal, data.iteritems())
+        selector_result = list(map(self.calculate_MACD_signal, data.iteritems()))
         selector_result = pd.concat(selector_result, axis=1).stack()
         selector_result.index.names = ["date","asset"]
         return selector_result.loc[start:end]

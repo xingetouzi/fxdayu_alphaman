@@ -1,5 +1,4 @@
 import pandas as pd
-
 from alphalens.performance import factor_information_coefficient
 
 def mean_information_coefficient(factor_data,

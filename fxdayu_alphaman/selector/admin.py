@@ -1,6 +1,7 @@
 # encoding:utf-8
 
 import os
+from functools import reduce
 from ipyparallel import Client
 from functools import partial
 
@@ -61,7 +62,7 @@ class Admin(object):
                                  "weight_dict":各选股器权重所组成的dict(dict/None)
         """
 
-        from utility import Strategy
+        from fxdayu_alphaman.selector.utility import Strategy
 
         def strategy_fun(gather, unit):
             return gather + unit
@@ -70,7 +71,7 @@ class Admin(object):
                                               selector_result_list,
                                               weight_dict=None):
             if weight_dict:
-                if not (len(weight_dict.keys()) >= len(selector_name_list)):
+                if not (len(list(weight_dict.keys())) >= len(selector_name_list)):
                     raise TypeError("weight_dict doesn't match selectors result list")
 
                 weighted_selector_result_list = []
@@ -134,7 +135,7 @@ class Admin(object):
                                  "weight_dict":各选股器权重所组成的dict(dict/None)
         """
 
-        from utility import Strategy
+        from fxdayu_alphaman.selector.utility import Strategy
 
         def strategy_fun(gather, unit):
             return gather + unit
@@ -143,7 +144,7 @@ class Admin(object):
                                               selector_result_list,
                                               weight_dict=None):
             if weight_dict:
-                if not (len(weight_dict.keys()) >= len(selector_name_list)):
+                if not (len(list(weight_dict.keys())) >= len(selector_name_list)):
                     raise TypeError("weight_dict doesn't match selectors result list")
 
                 weighted_selector_result_list = []
@@ -211,7 +212,7 @@ class Admin(object):
                                   "weight_dict":各选股器权重所组成的dict(dict/None)
         """
 
-        from utility import Strategy
+        from fxdayu_alphaman.selector.utility import Strategy
         import pandas as pd
 
         def strategy_fun(gather, unit):
@@ -221,7 +222,7 @@ class Admin(object):
                                               selector_result_list,
                                               weight_dict=None):
             if weight_dict:
-                if not (len(weight_dict.keys()) >= len(selector_name_list)):
+                if not (len(list(weight_dict.keys())) >= len(selector_name_list)):
                     raise TypeError("weight_dict doesn't match selectors result list")
 
                 weighted_selector_result_list = []
@@ -345,11 +346,11 @@ class Admin(object):
 
         """
 
-        from selector_analysis import get_stocklist_mean_return, \
+        from fxdayu_alphaman.selector.selector_analysis import get_stocklist_mean_return, \
             get_stocks_upside_return, \
             plot_distribution_features_table, \
             get_stocks_downside_return, get_stocks_holding_return
-        from utility import Performance
+        from fxdayu_alphaman.selector.utility import Performance
         from fxdayu_data import DataAPI
         import pyfolio as pf
         import numpy as np
@@ -608,14 +609,14 @@ class Admin(object):
         if selector_name_list == None:
             selector_name_list = self._all_selectors_name  # 默认组合包含了所有选股器
 
-        if not (len(weight_range_dict.keys()) >= len(selector_name_list)):
+        if not (len(list(weight_range_dict.keys())) >= len(selector_name_list)):
             raise TypeError("weight_range_dict doesn't match selector_name_list")
 
         parameter_dict = {}
         for selector_name in selector_name_list:
             parameter_dict[selector_name] = weight_range_dict[selector_name]
 
-        keys = parameter_dict.keys()
+        keys = list(parameter_dict.keys())
 
         if parallel:
             client = Client()
@@ -769,7 +770,7 @@ class Admin(object):
 
         # 接收外部传入的参数
         if para_dict:
-            for para in para_dict.keys():
+            for para in list(para_dict.keys()):
                 setattr(selector, para, para_dict[para])
 
         # 选股结果获取
@@ -814,7 +815,7 @@ class Admin(object):
 
         from itertools import product
 
-        keys = para_range_dict.keys()
+        keys = list(para_range_dict.keys())
 
         if parallel:
             client = Client()

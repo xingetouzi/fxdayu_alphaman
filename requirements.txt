@@ -10,3 +10,5 @@ alphalens>=0.1.0
 ipyparallel>=6.0.2
 empyrical>=0.3.0
 pyfolio>=0.7.0
+bs4>=0.0.1
+tushare>=0.8.8

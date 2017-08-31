@@ -1,5 +1,6 @@
 # encoding:utf-8
 
+from functools import reduce
 from ipyparallel import Client
 from functools import partial
 import pandas as pd
@@ -45,7 +46,7 @@ class Admin(object):
                 "weight": 加权方式 (str)
         """
 
-        from utility import MultiFactor
+        from fxdayu_alphaman.factor.utility import MultiFactor
 
         def strategy_fun(gather, unit):
             return gather + unit
@@ -83,7 +84,7 @@ class Admin(object):
         """
 
         import numpy as np
-        from utility import MultiFactor
+        from fxdayu_alphaman.factor.utility import MultiFactor
 
         def strategy_fun(gather, unit):
             return gather + unit
@@ -139,7 +140,7 @@ class Admin(object):
         """
 
         import numpy as np
-        from utility import MultiFactor
+        from fxdayu_alphaman.factor.utility import MultiFactor
 
         def strategy_fun(gather, unit):
             return gather + unit
@@ -344,7 +345,7 @@ class Admin(object):
         """
 
         from scipy import linalg
-        from factor import Factor
+        from fxdayu_alphaman.factor.factor import Factor
 
         def Schmidt(data):
             return linalg.orth(data)
@@ -368,7 +369,7 @@ class Admin(object):
 
         # 施密特正交
         for date in factor_value_list[0].index.levels[0]:
-            data = map(partial(get_vector, date), factor_value_list)
+            data = list(map(partial(get_vector, date), factor_value_list))
             data = pd.concat(data, axis=1, join="inner")
             if len(data) == 0:
                 continue
@@ -430,8 +431,8 @@ class Admin(object):
                 包含"factor_name", "holding_return", "mean_return_by_q", "ic", "mean_ic_by_M", "mean_ic"这些属性。
 
         """
-        from utility import Performance
-        from factor_analysis import mean_information_coefficient
+        from fxdayu_alphaman.factor.utility import Performance
+        from fxdayu_alphaman.factor.factor_analysis import mean_information_coefficient
         from fxdayu_data import DataAPI
         import alphalens
         import numpy as np
@@ -621,7 +622,7 @@ class Admin(object):
 
         # 接收外部传入的参数
         if para_dict:
-            for para in para_dict.keys():
+            for para in list(para_dict.keys()):
                 setattr(factor, para, para_dict[para])
 
         if data is None:
@@ -669,7 +670,7 @@ class Admin(object):
 
         from itertools import product
 
-        keys = para_range_dict.keys()
+        keys = list(para_range_dict.keys())
 
         if parallel:
             client = Client()

@@ -31,6 +31,7 @@ data = DataAPI.get(symbols=tuple(initial_codes),
                    start=start - datetime.timedelta(days=100),
                    end=end,
                    **data_config)
+
 prices = data.minor_xs("close")
 
 
@@ -54,7 +55,7 @@ factor_admin, result = manage_factors_value_test(factor_name_list, data_config_d
 
 #######################################
 
-factor_name_list, factor_value_list = result.keys(), result.values()
+factor_name_list, factor_value_list = list(result.keys()), list(result.values())
 
 # 因子加权合成
 

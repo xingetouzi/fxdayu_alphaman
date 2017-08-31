@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn import linear_model
 from scipy.stats import rankdata
 import talib as ta
-from utility import read_LFLO,get_industry_class
+from fxdayu_alphaman.factor.utility import read_LFLO,get_industry_class
 
 # factor基类
 class Factor(object):
@@ -112,7 +112,7 @@ class Factor(object):
         def handle(rows):
             return winsorize_series(rows[1])
 
-        result = pd.DataFrame(map(handle, factor_df.iterrows()), factor_df.index)
+        result = pd.DataFrame(list(map(handle, factor_df.iterrows())), factor_df.index)
 
         return result
 
@@ -143,7 +143,7 @@ class Factor(object):
         def handle(rows):
             return standardize_series(rows[1])
 
-        result = pd.DataFrame(map(handle, factor_df.iterrows()), factor_df.index)
+        result = pd.DataFrame(list(map(handle, factor_df.iterrows())), factor_df.index)
 
         return result
 
