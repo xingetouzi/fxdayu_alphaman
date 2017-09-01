@@ -30,13 +30,13 @@ hs300_return = get_stocklist_mean_return(hs300["index"], "hs300", start, end, hs
 def manage_selector_result_test(selector_name_list, data_config_dict):
     # admin测试 -获得多个选股器结果
     selector_admin = Admin(*selector_name_list)
-    result = selector_admin.get_all_selectors_result(initial_codes,
-                                                     start,
-                                                     end,
-                                                     all_selectors_data_config_dict=data_config_dict,
-                                                     parallel=False)
+    selectors_result_dict = selector_admin.get_all_selectors_result(initial_codes,
+                                                                    start,
+                                                                    end,
+                                                                    all_selectors_data_config_dict=data_config_dict,
+                                                                    parallel=False)
 
-    return selector_admin, result
+    return selector_admin, selectors_result_dict
 
 
 #######################################################
@@ -50,44 +50,29 @@ selector_name_list = ["DayMA", "DayMACD", "Volume003"]
 data_config_dict = {"DayMA": data_config, "Volume003": data_config, "DayMACD": data_config}
 
 # admin测试 -获得多个选股器结果
-selector_admin, result = manage_selector_result_test(selector_name_list, data_config_dict)
+selector_admin, selectors_result_dict = manage_selector_result_test(selector_name_list, data_config_dict)
 
 #######################################
-# # adimin测试 - 选股组合
-selector_result_list = []
-for selector_name in selector_name_list:
-    choice = result[selector_name]
-    selector_result_list.append(choice)
+# adimin测试 - 选股组合
 
-# #1.选股结果取并集
-Union_Strategy = selector_admin.Union_Strategy(selector_name_list, selector_result_list)
+# 1.选股结果取并集
+Union_Strategy = selector_admin.Union_Strategy(selectors_result_dict)
 print(Union_Strategy.strategy_result)
-#
-# #2.取交集
-Intersection_Strategy = selector_admin.Intersection_Strategy(selector_name_list, selector_result_list)
+
+# 2.取交集
+Intersection_Strategy = selector_admin.Intersection_Strategy(selectors_result_dict)
 print(Intersection_Strategy.strategy_result)
 
 # 3.给不同选股器配权重 组合打分 并取分值大的
 weight_dict = {"DayMA": 1, "Volume003": 5, "DayMACD": 3}
-Rank_Strategy = selector_admin.Rank_Strategy(selector_name_list, selector_result_list, rank=10, weight_dict=weight_dict)
+Rank_Strategy = selector_admin.Rank_Strategy(selectors_result_dict, rank=10, weight_dict=weight_dict)
 print(Rank_Strategy.strategy_result)
 
-# 4.枚举不同的选股方案组合
-selector_name_lists = selector_admin.max_combination(alist=selector_name_list, max_order=3)  # 获取可能的所有组合情况
-strategies = selector_admin.combinate_selectors_result(selector_admin.Union_Strategy,
-                                                       selector_name_lists,
-                                                       parallel=False)
-
-for strategy in strategies:
-    print("\n")
-    print(strategy.strategy_name)
-    print(strategy.strategy_result)
-
-# #5. 枚举不同的选股器权重
+# 4. 枚举不同的选股器权重
 weight_range_dict = {"DayMA": range(0, 2, 1), "DayMACD": range(0, 2, 1), "Volume003": range(0, 2, 1)}
 weighted_strategies = selector_admin.enumerate_selectors_weight(selector_admin.Rank_Strategy,
                                                                 weight_range_dict,
-                                                                selector_name_list,
+                                                                selectors_result_dict,
                                                                 rank=10,
                                                                 parallel=False)
 
@@ -97,14 +82,14 @@ for strategy in weighted_strategies:
     print(strategy.strategy_result)
 
 # 6.批量计算多个选股方案（含选股组合方案）绩效表现
-strategy_name_list = []
-strategy_result_list = []
-for strategy in strategies:
-    strategy_name_list.append(strategy.strategy_name + "+" + str(strategy.weight_dict))
-    strategy_result_list.append(strategy.strategy_result)
+strategies_name = []
+strategies_result = []
+for strategy in weighted_strategies:
+    strategies_name.append(strategy.strategy_name + "+" + str(strategy.weight_dict))
+    strategies_result.append(strategy.strategy_result)
 
-performance_list = selector_admin.show_strategies_performance(strategy_name_list,
-                                                              strategy_result_list,
+strategies_result_dict = dict(zip(strategies_name,strategies_result))
+performance_list = selector_admin.show_strategies_performance(strategies_result_dict,
                                                               start,
                                                               end,
                                                               periods=periods,

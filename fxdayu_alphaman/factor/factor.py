@@ -75,16 +75,37 @@ class Factor(object):
         :return: 重构后的因子值。A MultiIndex Series indexed by date (level 0) and asset (level 1), containing
         the values for a single alpha factor. 取值范围在0-1之间
         """
-        gather_rank = []
-        for date in factor.index.levels[0]:
-            gather_rank.append(factor.loc[date:date].rank(method="min", ascending=ascending))
-        gather_rank = pd.concat(gather_rank)
-
-        # 将rank后的因子映射到(0,1】
-        rank_range = len(gather_rank.index.levels[1])
+        ranked_factor = factor.groupby(level=0).apply(lambda x:x.rank(method="min", ascending=ascending))
+        # 将rank后的因子映射到(0,1]
+        rank_range = len(ranked_factor.index.levels[1])
         if rank_range>0:
-            gather_rank = gather_rank/rank_range
-        return gather_rank
+            ranked_factor = ranked_factor/rank_range
+        return ranked_factor
+
+    # 将因子值加一个极小的扰动项,用于对quantile做区分
+    @staticmethod
+    def get_disturbed_factor(factor):
+        """
+        输入multiIndex格式的因子值, 将因子值加一个极小的扰动项,用于对quantile区分
+        :param factor:  A MultiIndex Series indexed by date (level 0) and asset (level 1), containing
+        the values for a single alpha factor.
+                        -----------------------------------
+                            date    |    asset   |
+                        -----------------------------------
+                                    |   AAPL     |   0.5
+                                    -----------------------
+                                    |   BA       |  -1.1
+                                    -----------------------
+                        2014-01-01  |   CMG      |   1.7
+                                    -----------------------
+                                    |   DAL      |  -0.1
+                                    -----------------------
+                                    |   LULU     |   2.7
+                                    -----------------------
+        :return: 重构后的因子值,每个值加了一个极小的扰动项。
+        """
+        import numpy as np
+        return factor+np.random.random(factor.shape)/1000000000
 
     # 横截面去极值 - 对Dataframe数据
     def winsorize(self, factor_df):
@@ -115,7 +136,6 @@ class Factor(object):
         result = pd.DataFrame(list(map(handle, factor_df.iterrows())), factor_df.index)
 
         return result
-
 
     @staticmethod
     # 横截面标准化 - 对Dataframe数据

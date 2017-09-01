@@ -46,8 +46,10 @@ def unit_test1():
 def unit_test2():
     # 选股器单元测试2——通过Admin
     selector_admin = Admin()
-    result = selector_admin.instantiate_selector_and_get_selector_result([], initial_codes, start, end,
-                                                                         Selector=DayMA(),
+    result = selector_admin.instantiate_selector_and_get_selector_result("DayMA",
+                                                                         initial_codes,
+                                                                         start,
+                                                                         end,
                                                                          data_config=data_config)
     print(result)
     return selector_admin, result
@@ -111,20 +113,16 @@ results_list, para_dict_list = selector_admin.enumerate_parameter("DayMA",
 
 # 批量计算多个不同参数下方案的绩效表现
 
-strategy_name_list = []
-strategy_result_list = []
+strategies_name = []
+strategies_result = []
 for i in range(len(results_list)):
-    print("\n")
     strategy_name = "DayMA+" + str(para_dict_list[i])
-    print(strategy_name)
-    strategy_name_list.append(strategy_name)
-
+    strategies_name.append(strategy_name)
     strategy_result = results_list[i][results_list[i] > 0]
-    print(strategy_result)
-    strategy_result_list.append(strategy_result)  # 只记录大于0的结果
+    strategies_result.append(strategy_result)  # 只记录大于0的结果
 
-performance_list = selector_admin.show_strategies_performance(strategy_name_list,
-                                                              strategy_result_list,
+strategies_result_dict = dict(zip(strategies_name,strategies_result))
+performance_list = selector_admin.show_strategies_performance(strategies_result_dict,
                                                               start,
                                                               end,
                                                               periods=periods,

@@ -67,7 +67,7 @@ class DayMACD(Selector):
 
         if data is None:
             data = DataAPI.get(symbols=tuple(pool),
-                               start=start-datetime.timedelta(days=self.max_window) ,
+                               start=start-datetime.timedelta(days=self.max_window),
                                end = end,
                                **data_config)
 

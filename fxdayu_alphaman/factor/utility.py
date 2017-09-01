@@ -61,28 +61,32 @@ def read_benchmark(start, end, index_code="000300.XSHG", freq="D"):
         benchmark.high = benchmark_value.minor_xs("high")
         benchmark.low = benchmark_value.minor_xs("low")
         benchmark.close = benchmark_value.minor_xs("close")
+        benchmark.open.index.name = "date"
+        benchmark.high.index.name = "date"
+        benchmark.low.index.name = "date"
+        benchmark.close.index.name = "date"
     except:
         index_value = ts.get_k_data(code=index_code[0:6], start=start.strftime("%Y-%m-%d"),
                                     end=end.strftime("%Y-%m-%d"), ktype=freq, index=True)
         date = index_value.pop('date')
-        index_value["datetime"] = pd.to_datetime(date + " 15:00:00", format='%Y-%m-%d %H:%M:%S')
-        benchmark.close = index_value[["datetime", "close"]]
-        benchmark.open = index_value[["datetime", "open"]]
-        benchmark.high = index_value[["datetime", "high"]]
-        benchmark.low = index_value[["datetime", "low"]]
-        benchmark.close.columns = ["datetime", index_code]
-        benchmark.open.columns = ["datetime", index_code]
-        benchmark.high.columns = ["datetime", index_code]
-        benchmark.low.columns = ["datetime", index_code]
-        benchmark.close = benchmark.close.set_index("datetime")
-        benchmark.open = benchmark.open.set_index("datetime")
-        benchmark.high = benchmark.high.set_index("datetime")
-        benchmark.low = benchmark.low.set_index("datetime")
+        index_value["date"] = pd.to_datetime(date + " 15:00:00", format='%Y-%m-%d %H:%M:%S')
+        benchmark.close = index_value[["date", "close"]]
+        benchmark.open = index_value[["date", "open"]]
+        benchmark.high = index_value[["date", "high"]]
+        benchmark.low = index_value[["date", "low"]]
+        benchmark.close.columns = ["date", index_code]
+        benchmark.open.columns = ["date", index_code]
+        benchmark.high.columns = ["date", index_code]
+        benchmark.low.columns = ["date", index_code]
+        benchmark.close = benchmark.close.set_index("date")
+        benchmark.open = benchmark.open.set_index("date")
+        benchmark.high = benchmark.high.set_index("date")
+        benchmark.low = benchmark.low.set_index("date")
 
     benchmark.index = pd.DataFrame(data=benchmark.open.index)
     benchmark.index["asset"] = index_code
     benchmark.index["factor"] = 1
-    benchmark.index = benchmark.index.set_index(["datetime", "asset"])
+    benchmark.index = benchmark.index.set_index(["date", "asset"])
 
     return benchmark
 
@@ -156,7 +160,7 @@ def read_LFLO(symbols, start, end):
     :param symbols: 一组股票代码(list),形式为通用标准(编码.交易所 如["000001.XSHE","600000.XSHG"])
     :param start: 开始时间(datetime)
     :param end:结束时间(datetime)
-    :return: 对数流通市值。(pandas.Dataframe) index为date,columns为股票代码,值为对应股票对应时间的对数流通市值。
+    :return: 对数流通市值。(pandas.Dataframe) index为datetime,columns为股票代码,值为对应股票对应时间的对数流通市值。
     """
     LFLO = DataAPI.factor(tuple(symbols),fields="LFLO",start = start, end = end).minor_xs("LFLO")
     return LFLO

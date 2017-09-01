@@ -1,15 +1,12 @@
 # encoding:utf-8
 
-from functools import reduce
 from ipyparallel import Client
 from functools import partial
 import pandas as pd
 import os
 
-
 def _apply(func, *args, **kwargs):
     return partial(func, *args, **kwargs)()
-
 
 # 通过因子名称获取指定因子
 def _get_factor(factor_name, factor_package_name):
@@ -26,19 +23,23 @@ class Admin(object):
 
     def __init__(self, *all_factors_name):
         self._all_factors_name = all_factors_name
-        self._all_factors_value = {}
+        self._all_factors_dict = {}
+
+    # MultiIndex格式的因子累加
+    def combine_factor(self,factor_value_list):
+        gather_result = pd.DataFrame(pd.concat(factor_value_list, join="outer", axis=1).sum(axis=1))
+        gather_result.index.names = ["date", "asset"]
+        gather_result.columns = ["factor", ]
+        return gather_result
 
     # 等权重加权合成因子
-    def equal_weighted_factor(self,
-                              factor_name_list,
-                              factor_value_list):
+    def equal_weighted_factor(self, factors_dict):
         """
         将若干个因子等权重合成新因子
-        :param factor_name_list: 若干因子名称组成的列表(list)
-        　　　　                   如：['factor_name_1','factor_name_2',...]
-        :param factor_value_list: 若干因子值组成的列表(list)，与factor_name_list一一对应。
-                           　　　　 每个因子值格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
-                            　　　　包含一列factor值。
+        :param factors_dict: 若干因子组成的字典(dict),形式为:
+                             {"factor_name_1":factor_1,"factor_name_2":factor_2}
+                           　每个因子值格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
+                            包含一列factor值。
         :return: MultiFactor　对象。包含三个属性：
         　　　　　"name"：合成的因子名称（str)
                 "multifactor_value":合成因子值（MultiIndex Series,索引(index)为date(level 0)和asset(level 1),
@@ -48,12 +49,9 @@ class Admin(object):
 
         from fxdayu_alphaman.factor.utility import MultiFactor
 
-        def strategy_fun(gather, unit):
-            return gather + unit
-
         # 因子累加
-        gather_result = reduce(strategy_fun, factor_value_list)
-        multifactor_name = "+".join(factor_name_list)
+        gather_result = self.combine_factor(list(factors_dict.values()))
+        multifactor_name = "+".join(list(factors_dict.keys()))
 
         multifactor = MultiFactor()
         multifactor["name"] = multifactor_name
@@ -64,50 +62,39 @@ class Admin(object):
 
     # 根据样本协方差矩阵加权合成因子---目标:最大化因子IC_IR
     def ic_cov_weighted_factor(self,
-                               factor_name_list,
-                               factor_value_list,
+                               factors_dict,
                                ic_weight_df):
         """
         根据Sample协方差矩阵估算方法得到的因子权重,将若干个因子按该权重加权合成新因子
-        :param factor_name_list: 若干因子名称组成的列表(list)
-        　　　　                  如：['factor_name_1','factor_name_2',...]
-        :param factor_value_list: 若干因子值组成的列表(list)，与factor_name_list一一对应。
-                                  每个因子值格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
-                                  包含一列factor值。
+        :param factors_dict: 若干因子组成的字典(dict),形式为:
+                             {"factor_name_1":factor_1,"factor_name_2":factor_2}
+                           　每个因子值格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
+                            包含一列factor值。
         :param ic_weight_df: 使用Sample 协方差矩阵估算方法得到的因子权重(pd.Dataframe),可通过Admin.get_ic_weight_df 获取。
-                             索引（index)为datetime,columns为待合成的因子名称，与factor_name_list一致。
+                             索引（index)为datetime,columns为待合成的因子名称，与factors_dict一致。
         :return: MultiFactor　对象。包含三个属性：
         　　　　　"name"：合成的因子名称（str)
                 "multifactor_value":合成因子值（MultiIndex Series,索引(index)为date(level 0)和asset(level 1),
                                     包含一列factor值)
                 "weight": 加权方式 (str)
         """
-
-        import numpy as np
         from fxdayu_alphaman.factor.utility import MultiFactor
-
-        def strategy_fun(gather, unit):
-            return gather + unit
 
         weight = ic_weight_df
         weighted_factor_value_list = []
-        for _factor in factor_value_list:
-            original_factor = _factor.copy()
-            for date in original_factor.index.levels[0]:
-                try:
-                    weight_by_date = weight[factor_name_list[0]].loc[date]
-                    x = original_factor.loc[date] * weight_by_date
-                    x.index = pd.MultiIndex.from_product(([date], x.index))
-                    original_factor.loc[date] = x
-                except:
-                    weight_by_date = np.NaN
-                    original_factor.loc[date] = original_factor.loc[date] * weight_by_date
-
-            weighted_factor_value_list.append(original_factor)
+        for factor_name in factors_dict.keys():
+            original_factor = factors_dict[factor_name]
+            w = pd.DataFrame(weight[factor_name].loc[original_factor.index.get_level_values(level=0)])
+            weighted_factor = pd.DataFrame(original_factor)
+            weighted_factor.columns = ["factor", ]
+            w.columns = ["factor", ]
+            w.index = weighted_factor.index
+            weighted_factor = weighted_factor * w
+            weighted_factor_value_list.append(weighted_factor)
 
         # 因子累加
-        gather_result = reduce(strategy_fun, weighted_factor_value_list)
-        multifactor_name = "+".join(factor_name_list)
+        gather_result = self.combine_factor(weighted_factor_value_list)
+        multifactor_name = "+".join(list(factors_dict.keys()))
 
         multifactor = MultiFactor()
         multifactor["name"] = multifactor_name
@@ -118,52 +105,40 @@ class Admin(object):
 
     # 使用 Ledoit-Wolf 压缩的协方差矩阵估算方法得到的因子权重加权合成因子---目标:最大化因子IC_IR
     def ic_shrink_cov_weighted_factor(self,
-                                      factor_name_list,
-                                      factor_value_list,
+                                      factors_dict,
                                       ic_weight_shrink_df):
-
         """
         根据 Ledoit-Wolf 压缩的协方差矩阵估算方法得到的因子权重,将若干个因子按该权重加权合成新因子
-        :param factor_name_list: 若干因子名称组成的列表(list)
-        　　　　                  如：['factor_name_1','factor_name_2',...]
-        :param factor_value_list: 若干因子值组成的列表(list)，与factor_name_list一一对应。
-                                  每个因子值格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
-                                  包含一列factor值。
+        :param factors_dict: 若干因子组成的字典(dict),形式为:
+                             {"factor_name_1":factor_1,"factor_name_2":factor_2}
+                           　每个因子值格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
+                             包含一列factor值。
         :param ic_weight_shrink_df: 使用Ledoit-Wolf 压缩的协方差矩阵估算方法得到的因子权重(pd.Dataframe),
             　　                    可通过Admin.get_ic_weight_shrink_df 获取。
-        　　　　                     索引（index)为datetime,columns为待合成的因子名称，与factor_name_list一致。
+        　　　　                     索引（index)为datetime,columns为待合成的因子名称，与factors_dict一致。
         :return: MultiFactor　对象。包含三个属性：
         　　　　　"name"：合成的因子名称（str)
                 "multifactor_value":合成因子值（MultiIndex Series,索引(index)为date(level 0)和asset(level 1),
                                     包含一列factor值)
                 "weight": 加权方式 (str)
         """
-
-        import numpy as np
         from fxdayu_alphaman.factor.utility import MultiFactor
-
-        def strategy_fun(gather, unit):
-            return gather + unit
 
         weight = ic_weight_shrink_df
         weighted_factor_value_list = []
-        for _factor in factor_value_list:
-            original_factor = _factor.copy()
-            for date in original_factor.index.levels[0]:
-                try:
-                    weight_by_date = weight[factor_name_list[0]].loc[date]
-                    x = original_factor.loc[date] * weight_by_date
-                    x.index = pd.MultiIndex.from_product(([date], x.index))
-                    original_factor.loc[date] = x
-                except:
-                    weight_by_date = np.NaN
-                    original_factor.loc[date] = original_factor.loc[date] * weight_by_date
-
-            weighted_factor_value_list.append(original_factor)
+        for factor_name in factors_dict.keys():
+            original_factor = factors_dict[factor_name]
+            w = pd.DataFrame(weight[factor_name].loc[original_factor.index.get_level_values(level=0)])
+            weighted_factor = pd.DataFrame(original_factor)
+            weighted_factor.columns = ["factor", ]
+            w.columns = ["factor", ]
+            w.index = weighted_factor.index
+            weighted_factor = weighted_factor * w
+            weighted_factor_value_list.append(weighted_factor)
 
         # 因子累加
-        gather_result = reduce(strategy_fun, weighted_factor_value_list)
-        multifactor_name = "+".join(factor_name_list)
+        gather_result = self.combine_factor(weighted_factor_value_list)
+        multifactor_name = "+".join(list(factors_dict.keys()))
 
         multifactor = MultiFactor()
         multifactor["name"] = multifactor_name
@@ -174,8 +149,7 @@ class Admin(object):
 
     # 获取因子的ic序列
     def get_factors_ic_df(self,
-                          factor_name_list,
-                          factor_value_list,
+                          factors_dict,
                           pool,
                           start,
                           end,
@@ -183,12 +157,11 @@ class Admin(object):
                           quantiles=5,
                           price=None):
         """
-        获取指定周期下的多个因子ｉc值序列矩阵
-        :param factor_name_list: 若干因子名称组成的列表(list)
-        　　　　如：['factor_name_1','factor_name_2',...]
-        :param factor_value_list: 若干因子值组成的列表(list)，与factor_name_list一一对应。
-               每个因子值格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
-               包含一列factor值。
+        获取指定周期下的多个因子ic值序列矩阵
+        :param factors_dict: 若干因子组成的字典(dict),形式为:
+                             {"factor_name_1":factor_1,"factor_name_2":factor_2}
+                           　每个因子值格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
+                             包含一列factor值。
         :param pool: 股票池范围（list),如：["000001.XSHE","600300.XSHG",......]
         :param start: 起始时间 (datetime)
         :param end: 结束时间 (datetime)
@@ -197,7 +170,7 @@ class Admin(object):
         :param price (optional): 包含了pool中所有股票的价格时间序列(pd.Dataframe)，索引（index)为datetime,columns为各股票代码，与pool对应。
         :return: ic_df_dict 指定的不同周期下的多个因子ｉc值序列矩阵所组成的字典(dict), 键为周期（int），值为因子ic值序列矩阵(ic_df)。
                  如：｛１:ic_df_1,5:ic_df_5,10:ic_df_10｝
-                 ic_df(ic值序列矩阵) 类型pd.Dataframe，索引（index）为datetime,columns为各因子名称，与factor_name_list对应。
+                 ic_df(ic值序列矩阵) 类型pd.Dataframe，索引（index）为datetime,columns为各因子名称，与factors_dict中的对应。
                  如：
 
                 　　　　　　　　　　　BP	　　　CFP	　　　EP	　　ILLIQUIDITY	REVS20	　　　SRMI	　　　VOL20
@@ -225,22 +198,23 @@ class Admin(object):
             price_data = get_price_data(pool.tolist(), start, end, max_window=max(periods))
             price = price_data.minor_xs("close")
 
-        ic_list = []
-        for factor_value in factor_value_list:
+        ic_dict = {}
+        for factor_name in factors_dict.keys():
+            factor_value = factors_dict[factor_name]
             # 持股收益-逐只
             stocks_holding_return = utils.get_clean_factor_and_forward_returns(factor_value, price, quantiles=quantiles,
                                                                                periods=periods)
             ic = performance.factor_information_coefficient(stocks_holding_return)
-            ic_list.append(ic)
+            ic_dict[factor_name] = ic
 
         ic_df_dict = {}
         for period in periods:
             ic_table = []
-            for i in range(len(ic_list)):
-                ic_by_period = pd.DataFrame(ic_list[i][period])
-                ic_by_period.columns = [factor_name_list[i], ]
+            for factor_name in ic_dict.keys():
+                ic_by_period = pd.DataFrame(ic_dict[factor_name][period])
+                ic_by_period.columns = [factor_name, ]
                 ic_table.append(ic_by_period)
-            ic_df_dict[period] = pd.concat(ic_table, axis=1)
+            ic_df_dict[period] = pd.concat(ic_table, axis=1).dropna()
 
         return ic_df_dict
 
@@ -276,7 +250,6 @@ class Admin(object):
             ic_dt = ic_df[ic_df.index < dt].tail(n)
             if len(ic_dt) < n:
                 continue
-
             ic_cov_mat = np.mat(np.cov(ic_dt.T.as_matrix()).astype(float))
             inv_ic_cov_mat = np.linalg.inv(ic_cov_mat)
             weight = inv_ic_cov_mat * np.mat(ic_dt.mean()).reshape(len(inv_ic_cov_mat), 1)
@@ -329,19 +302,17 @@ class Admin(object):
 
     # 因子间存在较强同质性时，使用施密特正交化方法对因子做正交化处理，用得到的正交化残差作为因子,默认对Admin里加载的所有因子做调整
     def orthogonalize(self,
-                      factor_name_list=None,
-                      factor_value_list=None,
+                      factors_dict=None,
                       standardize_type="rank"):
 
         """
         # 因子间存在较强同质性时，使用施密特正交化方法对因子做正交化处理，用得到的正交化残差作为因子,默认对Admin里加载的所有因子做调整
-        :param factor_name_list: 若干因子名称组成的列表(list)
-        　　　　如：['factor_name_1','factor_name_2',...]
-        :param factor_value_list: 若干因子值组成的列表(list)，与factor_name_list一一对应。
-               每个因子值格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
-               包含一列factor值。
+        :param factors_dict: 若干因子组成的字典(dict),形式为:
+                             {"factor_name_1":factor_1,"factor_name_2":factor_2}
+                           　每个因子值格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
+                             包含一列factor值。
         :param standardize_type: 标准化方法，有"rank"（排序标准化）,"z_score"(z-score标准化)两种（"rank"/"z_score"）
-        :return: factor_name_list（new),factor_value_list(new) 正交化处理后所得的新因子名称列表，因子值列表。
+        :return: factors_dict（new) 正交化处理后所得的一系列新因子。
         """
 
         from scipy import linalg
@@ -353,20 +324,21 @@ class Admin(object):
         def get_vector(date, factor):
             return factor.loc[date]
 
-        if not factor_name_list or not factor_value_list:
-            if not self._all_factors_value:
+        if not factors_dict:
+            if not self._all_factors_dict:
                 raise TypeError("There is no factor calculated.")
             else:
-                factor_name_list = list(self._all_factors_value.keys())
-                factor_value_list = list(self._all_factors_value.values())
+                factors_dict = self._all_factors_dict
 
-        if len(factor_name_list) < 2:
+        if len(list(factors_dict.keys())) < 2:
             raise TypeError("you must give more than 2 factors.")
 
-        factor_value_dict = {}  # 用于记录正交化后的因子值
-        for factor_name in factor_name_list:
-            factor_value_dict[factor_name] = []
+        new_factors_dict = {}  # 用于记录正交化后的因子值
+        for factor_name in factors_dict.keys():
+            new_factors_dict[factor_name] = []
 
+        factor_name_list = list(factors_dict.keys())
+        factor_value_list = list(factors_dict.values())
         # 施密特正交
         for date in factor_value_list[0].index.levels[0]:
             data = list(map(partial(get_vector, date), factor_value_list))
@@ -377,22 +349,22 @@ class Admin(object):
                 continue
             data = pd.DataFrame(Schmidt(data), index=data.index)
             data.columns = factor_name_list
-            for factor_name in data.columns:
+            for factor_name in factor_name_list:
                 row = pd.DataFrame(data[factor_name]).T
                 row.index = [date, ]
-                factor_value_dict[factor_name].append(row)
+                new_factors_dict[factor_name].append(row)
 
         # 因子标准化
         for factor_name in factor_name_list:
-            factor_value = pd.concat(factor_value_dict[factor_name])
+            factor_value = pd.concat(new_factors_dict[factor_name])
             if standardize_type == "z_score":
                 factor_value = Factor.standardize(factor_value)
-                factor_value_dict[factor_name] = Factor.factor_df_to_factor_mi(factor_value)
+                new_factors_dict[factor_name] = Factor.factor_df_to_factor_mi(factor_value)
             else:
                 factor_value = Factor.factor_df_to_factor_mi(factor_value)
-                factor_value_dict[factor_name] = Factor.get_factor_by_rankScore(factor_value)
+                new_factors_dict[factor_name] = Factor.get_factor_by_rankScore(factor_value)
 
-        return list(factor_value_dict.keys()), list(factor_value_dict.values())
+        return new_factors_dict
 
     @staticmethod
     def calculate_performance(factor_name,
@@ -502,8 +474,7 @@ class Admin(object):
 
     # 遍历list中各因子的结果，计算其绩效表现，并汇总成列表——list
     def show_factors_performance(self,
-                                 factor_name_list,
-                                 factor_value_list,
+                                 factors_dict,
                                  start,
                                  end,
                                  periods=(1, 5, 10),
@@ -511,17 +482,16 @@ class Admin(object):
                                  price=None,
                                  parallel=False):
         """
-        批量计算factor_name_list中所有因子的表现。
-        :param factor_name_list: 若干因子名称组成的列表(list)
-        　　　　如：['factor_name_1','factor_name_2',...]
-        :param factor_value_list: 若干因子值组成的列表(list)，与factor_name_list一一对应。
-               每个因子值格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
-               包含一列factor值。
+        批量计算factors_dict中所有因子的表现。
+        :param factors_dict: 若干因子组成的字典(dict),形式为:
+                             {"factor_name_1":factor_1,"factor_name_2":factor_2}
+                           　每个因子值格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
+                             包含一列factor值。
         :param start: 回测起始时间 datetime
         :param end: 回测结束时间 datetime
         :param periods: 持有时间 tuple
         :param quantiles: 划分分位数 int
-        :param price （optional）:计算绩效时用到的的个股每日价格,通常为收盘价（close）。索引（index)为datetime,columns为各股票代码。pandas dataframe类型,形如:
+        :param price (optional):计算绩效时用到的的个股每日价格,通常为收盘价（close）。索引（index)为datetime,columns为各股票代码。pandas dataframe类型,形如:
                                        sh600011  sh600015  sh600018  sh600021  sh600028
                 datetime
                 2014-10-08 15:00:00    18.743    17.639       NaN     7.463     9.872
@@ -534,7 +504,7 @@ class Admin(object):
                 2014-10-17 15:00:00    18.349    17.535       NaN     7.272     9.611
                 2014-10-20 15:00:00    18.319    17.618       NaN     7.360     9.629
                 .....................................................................
-        :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
+        :param parallel: 是否执行并行计算(bool) 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
         :return:因子的表现 (Performance object)所组成的列表(list),
                 列表里每个元素为因子的表现 (Performance object)
                 包含"factor_name", "holding_return", "mean_return_by_q", "ic", "mean_ic_by_M", "mean_ic"这些属性。
@@ -544,10 +514,10 @@ class Admin(object):
             client = Client()
             lview = client.load_balanced_view()
             results = []
-            for i in range(len(factor_name_list)):
+            for factor_name in factors_dict.keys():
                 results.append(lview.apply_async(self.calculate_performance,
-                                                 factor_name_list[i],
-                                                 factor_value_list[i],
+                                                 factor_name,
+                                                 factors_dict[factor_name],
                                                  start,
                                                  end,
                                                  periods=periods,
@@ -558,10 +528,10 @@ class Admin(object):
             return factors_performance
         else:
             factors_performance = []
-            for i in range(len(factor_name_list)):
+            for factor_name in factors_dict.keys():
                 result = _apply(self.calculate_performance,
-                                factor_name_list[i],
-                                factor_value_list[i],
+                                factor_name,
+                                factors_dict[factor_name],
                                 start,
                                 end,
                                 periods=periods,
@@ -583,9 +553,9 @@ class Admin(object):
                                                 para_dict=None,
                                                 ):
         """
-        计算某个因子指定时间段的因子值
-        :param factor_name: 因子名称（str） 需确保传入的factor_name、因子的类名、对应的module文件名一致(不含.后缀),因子才能正确加载
-        :param pool: 股票池范围（list),如：["000001.XSHE","600300.XSHG",......]
+        计算某个因子指定时间段的因子值 (可支持直接用factor_name加载到对应因子的算法)
+        :param factor_name: 因子名称(str) 需确保传入的factor_name、因子的类名、对应的module文件名一致(不含.后缀),因子才能正确加载
+        :param pool: 股票池范围(list),如：["000001.XSHE","600300.XSHG",......]
         :param start: 起始时间 (datetime)
         :param end: 结束时间 (datetime)
         :param Factor (optional): 因子(factor.factor.Factor object),可选.可以输入一个设计好的Factor类来执行计算.
@@ -663,7 +633,7 @@ class Admin(object):
         :param factor_package_name: 因子所在的package名称 (str)
         :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
         :return: factor_value_by_para_list, para_dict_list
-                 factor_value_by_para_list：不同参数下得到的因子值所组成的list（list）
+                 factor_value_by_para_list：不同参数下得到的因子值所组成的list
                  para_dict_list：不同参数集所组成的list（list），与factor_value_by_para_list一一对应。
                                  每个参数集格式为dict，形如:{"fast":5,"slow":10}
         """
@@ -719,7 +689,6 @@ class Admin(object):
                               all_factors_data_dict=None,
                               all_factors_data_config_dict=None,
                               all_factors_para_dict=None,
-                              factor_package_name="factors",
                               parallel=False,
                               update=False):
         """
@@ -731,7 +700,7 @@ class Admin(object):
         :param all_Factors_dict (optional):加载到admin下的所有因子类(factor.factor.Factor object)构成的字典, 可选.
                                       可以输入一系列设计好的Factor类(与Admin._all_factors_name一一对应)直接执行计算.
                                       形如:{“factor_name_1”:Factor_1,factor_name_2”:Factor_2,...}
-        :param all_factors_data_dict （optional): 计算因子需用到的自定义数据组成的字典（dict）,根据计算需求自行指定。
+        :param all_factors_data_dict(optional): 计算因子需用到的自定义数据组成的字典（dict）,根据计算需求自行指定。
                                                   字典键名为所有载入的因子的因子名(admin._all_factors_name),值为对应因子所需的数据。
                                                   形如：{“factor_name_1”:data_1,factor_name_2”:data_2,...}
         :param all_factors_data_config_dict (optional):  在all_factors_data_dict参数为None的情况下(不传入自定义数据),
@@ -744,17 +713,16 @@ class Admin(object):
                                                  字典键名为所有载入的因子的因子名(admin._all_factors_name),
                                                  值为对应因子的指定参数集(dict)。
                                                  形如: {“factor_name_1”:{"fast":5,"slow":10},factor_name_2”:{"fast":4,"slow":7},...}
-        :param factor_package_name: 因子所在的package名称 (str)
         :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
         :param update: 是否更新已有记录值(bool)。默认为False——如果admin曾经计算过所有因子值,则不再重复计算。 True 则更新计算所加载的因子值。
-        :return: all_factors_value : admin下加载的所有因子的因子值(dict)。
+        :return: all_factors_dict :  admin下加载的所有因子的因子值(dict)。
                                      字典键名为所有载入的因子的因子名(admin._all_factors_name)
                                      值为 因子值(factor_value)　格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
                                      包含一列factor值。
         """
 
-        if self._all_factors_value and not update:
-            return self._all_factors_value
+        if self._all_factors_dict and not update:
+            return self._all_factors_dict
         else:
             # data参数验证
             if not all_factors_data_dict:
@@ -774,7 +742,7 @@ class Admin(object):
                 for factor_name in self._all_factors_name:
                     all_Factors_dict[factor_name] = None
 
-            self._all_factors_value = {}
+            self._all_factors_dict = {}
             if parallel:
                 client = Client()
                 lview = client.load_balanced_view()
@@ -790,17 +758,16 @@ class Admin(object):
                                                                    all_factors_data_config_dict[factor_name],
                                                                    all_factors_para_dict[factor_name])
                 lview.wait(factors_value.values())
-                self._all_factors_value = {name: result.get() for name, result in factors_value.items()}
+                self._all_factors_dict = {name: result.get() for name, result in factors_value.items()}
             else:
-
                 for factor_name in self._all_factors_name:
-                    self._all_factors_value[factor_name] = _apply(self.instantiate_factor_and_get_factor_value,
-                                                                  factor_name,
-                                                                  pool,
-                                                                  start,
-                                                                  end,
-                                                                  all_Factors_dict[factor_name],
-                                                                  all_factors_data_dict[factor_name],
-                                                                  all_factors_data_config_dict[factor_name],
-                                                                  all_factors_para_dict[factor_name])
-            return self._all_factors_value
+                    self._all_factors_dict[factor_name] = _apply(self.instantiate_factor_and_get_factor_value,
+                                                                 factor_name,
+                                                                 pool,
+                                                                 start,
+                                                                 end,
+                                                                 all_Factors_dict[factor_name],
+                                                                 all_factors_data_dict[factor_name],
+                                                                 all_factors_data_config_dict[factor_name],
+                                                                 all_factors_para_dict[factor_name])
+            return self._all_factors_dict

@@ -1,10 +1,9 @@
 # encoding:utf-8
 
 import os
-from functools import reduce
 from ipyparallel import Client
 from functools import partial
-
+import pandas as pd
 
 def _apply(func, *args, **kwargs):
     return partial(func, *args, **kwargs)()
@@ -25,33 +24,37 @@ class Admin(object):
         self._all_selectors_result = {}
 
     @staticmethod
+    # MultiIndex格式的选股方案累加
+    def combine_selector(selector_result_list):
+        gather_result = pd.concat(selector_result_list, join="outer", axis=1).fillna(0).sum(axis=1)
+        gather_result.index.names = ["date", "asset"]
+        return gather_result
+
+    @staticmethod
     # 选股方案取交集
-    def Intersection_Strategy(selector_name_list,
-                              selector_result_list,
+    def Intersection_Strategy(selectors_result_dict,
                               rank=None,
                               rank_pct=None,
                               weight_dict=None):
         """
         对若干选股方案取交集
-        :param selector_name_list: 若干选股器名称组成的列表(list)
-        　　　　                    如：['selector_name_1','selector_name_2',...]
-        :param selector_result_list: 若干选股结果组成的列表(list)，与selector_name_list一一对应。
-                           　　　　   每个选股结果格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
-                            　　　  　包含一列结果值。(1:选出,0:不选,-1:做空)  形如:
+        :param selectors_result_dict: 若干选股器结果组成的字典(dict),形式为:
+                             {"selector_name_1":selector_1,"selector_name_2:selector_2}
+                           　每个选股器结果(selector_result)格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
+                             包含一列结果值。(1:选出,0:不选,-1:做空)  形如:
                                         -----------------------------------
                                             date    |    asset   |
                                         -----------------------------------
                                                     |   AAPL     |   1
                                                     -----------------------
-                                                    |   BA       |  1
+                                                    |   BA       |   1
                                                     -----------------------
                                         2014-01-01  |   CMG      |   1
                                                     -----------------------
-                                                    |   DAL      |  0
+                                                    |   DAL      |   0
                                                     -----------------------
                                                     |   LULU     |   -1
                                                     -----------------------
-                                                    
         :param rank:  选出得分排名前rank的股票(个数排名) 该参数在交集方案下默认为空
         :param rank_pct: 选出得分排名前rank_pct的股票(百分位排名) 该参数在交集方案下默认为空
         :param weight_dict: 各选股器权重所组成的dict。该参数在交集方案下默认为空
@@ -61,56 +64,31 @@ class Admin(object):
                             　　　  　              包含一列结果值。(>0:选出,0:不选,<0:做空))
                                  "weight_dict":各选股器权重所组成的dict(dict/None)
         """
-
         from fxdayu_alphaman.selector.utility import Strategy
 
-        def strategy_fun(gather, unit):
-            return gather + unit
-
-        def get_weighted_selector_result_list(selector_name_list,
-                                              selector_result_list,
-                                              weight_dict=None):
-            if weight_dict:
-                if not (len(list(weight_dict.keys())) >= len(selector_name_list)):
-                    raise TypeError("weight_dict doesn't match selectors result list")
-
-                weighted_selector_result_list = []
-                for i in range(len(selector_name_list)):
-                    weighted_selector_result_list.append(selector_result_list[i] * weight_dict[selector_name_list[i]])
-
-                return weighted_selector_result_list
-            else:
-                return selector_result_list
-
-        weighted_selector_result_list = get_weighted_selector_result_list(selector_name_list,
-                                                                          selector_result_list,
-                                                                          weight_dict)
-
-        gather_result = reduce(strategy_fun, weighted_selector_result_list)
-        strategy_name = "+".join(selector_name_list)
+        gather_result = Admin.combine_selector(list(selectors_result_dict.values()))
+        strategy_name = "+".join(list(selectors_result_dict.keys()))
 
         strategy = Strategy()
         strategy["strategy_name"] = strategy_name + "_Intersection"
         strategy["strategy_result"] = gather_result[gather_result >= gather_result.max() - 0.000000001]
-        strategy["weight_dict"] = weight_dict
+        strategy["weight_dict"] = None
 
         return strategy
 
     @staticmethod
     # 选股方案取并集
-    def Union_Strategy(selector_name_list,
-                       selector_result_list,
+    def Union_Strategy(selectors_result_dict,
                        rank=None,
                        rank_pct=None,
                        weight_dict=None):
 
         """
         对若干选股方案取并集
-        :param selector_name_list: 若干选股器名称组成的列表(list)
-        　　　　                    如：['selector_name_1','selector_name_2',...]
-        :param selector_result_list: 若干选股结果组成的列表(list)，与selector_name_list一一对应。
-                           　　　　   每个选股结果格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
-                            　　　  　包含一列结果值。(1:选出,0:不选,-1:做空)  形如:
+        :param selectors_result_dict: 若干选股器结果组成的字典(dict),形式为:
+                             {"selector_name_1":selector_1,"selector_name_2:selector_2}
+                           　每个选股器结果(selector_result)格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
+                             包含一列结果值。(1:选出,0:不选,-1:做空)  形如:
                                         -----------------------------------
                                             date    |    asset   |
                                         -----------------------------------
@@ -124,7 +102,6 @@ class Admin(object):
                                                     -----------------------
                                                     |   LULU     |   -1
                                                     -----------------------
-
         :param rank:  选出得分排名前rank的股票(个数排名) 该参数在并集方案下默认为空
         :param rank_pct: 选出得分排名前rank_pct的股票(百分位排名) 该参数在并集方案下默认为空
         :param weight_dict: 各选股器权重所组成的dict。该参数在并集方案下默认为空
@@ -134,57 +111,31 @@ class Admin(object):
                             　　　  　              包含一列结果值。(>0:选出,0:不选,<0:做空))
                                  "weight_dict":各选股器权重所组成的dict(dict/None)
         """
-
         from fxdayu_alphaman.selector.utility import Strategy
 
-        def strategy_fun(gather, unit):
-            return gather + unit
-
-        def get_weighted_selector_result_list(selector_name_list,
-                                              selector_result_list,
-                                              weight_dict=None):
-            if weight_dict:
-                if not (len(list(weight_dict.keys())) >= len(selector_name_list)):
-                    raise TypeError("weight_dict doesn't match selectors result list")
-
-                weighted_selector_result_list = []
-                for i in range(len(selector_name_list)):
-                    weighted_selector_result_list.append(selector_result_list[i] * weight_dict[selector_name_list[i]])
-
-                return weighted_selector_result_list
-            else:
-                return selector_result_list
-
-        weighted_selector_result_list = get_weighted_selector_result_list(selector_name_list,
-                                                                          selector_result_list,
-                                                                          weight_dict)
-
-        gather_result = reduce(strategy_fun, weighted_selector_result_list)
-        strategy_name = "+".join(selector_name_list)
+        gather_result = Admin.combine_selector(list(selectors_result_dict.values()))
+        strategy_name = "+".join(list(selectors_result_dict.keys()))
 
         strategy = Strategy()
         strategy["strategy_name"] = strategy_name + "_Union"
         strategy["strategy_result"] = gather_result[gather_result > 0]
-        strategy["weight_dict"] = weight_dict
+        strategy["weight_dict"] = None
 
         return strategy
 
     @staticmethod
     # 加权汇总排序选股
-    def Rank_Strategy(selector_name_list,
-                      selector_result_list,
+    def Rank_Strategy(selectors_result_dict,
                       rank=10,
                       rank_pct=None,
                       weight_dict=None):
 
         """
         各选股结果加权汇总后，取排名前rank/rank_pct且至少被某一个选股器选出过一次的股票。
-        
-        :param selector_name_list: 若干选股器名称组成的列表(list)
-        　　　　                    如：['selector_name_1','selector_name_2',...]
-        :param selector_result_list: 若干选股结果组成的列表(list)，与selector_name_list一一对应。
-                           　　　　   每个选股结果格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
-                            　　　  　包含一列结果值。(1:选出,0:不选,-1:做空)  形如:
+        :param selectors_result_dict: 若干选股器结果组成的字典(dict),形式为:
+                             {"selector_name_1":selector_1,"selector_name_2:selector_2}
+                           　每个选股器结果(selector_result)格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
+                             包含一列结果值。(1:选出,0:不选,-1:做空)  形如:
                                         -----------------------------------
                                             date    |    asset   |
                                         -----------------------------------
@@ -198,11 +149,10 @@ class Admin(object):
                                                     -----------------------
                                                     |   LULU     |   -1
                                                     -----------------------
-
         :param rank (optional):  选出得分排名前rank的股票(个数排名) (int)
         :param rank_pct (optional): 选出得分排名前rank_pct的股票(百分位排名) (float) ,与rank二选一。该参数有值的时候,rank参数失效。
         :param weight_dict: 各选股器权重所组成的dict。默认等权重。
-                            字典键为选股器名称(str),包含了selector_name_list中的所有选股器;
+                            字典键为选股器名称(str),包含了selectors_result_dict中的所有选股器;
                             字典值为float,代表对应选股器的给分权重。
                             形如:{'selector_name_1':1.0,'selector_name_2':2.0,...}
         :return: 加权汇总的策略结果: Strategy 对象,包含"strategy_name", "strategy_result", "weight_dict"三个属性。
@@ -213,48 +163,31 @@ class Admin(object):
         """
 
         from fxdayu_alphaman.selector.utility import Strategy
-        import pandas as pd
 
-        def strategy_fun(gather, unit):
-            return gather + unit
-
-        def get_weighted_selector_result_list(selector_name_list,
-                                              selector_result_list,
+        def get_weighted_selector_result_list(selectors_result_dict,
                                               weight_dict=None):
             if weight_dict:
-                if not (len(list(weight_dict.keys())) >= len(selector_name_list)):
-                    raise TypeError("weight_dict doesn't match selectors result list")
-
                 weighted_selector_result_list = []
-                for i in range(len(selector_name_list)):
-                    weighted_selector_result_list.append(selector_result_list[i] * weight_dict[selector_name_list[i]])
-
+                for selector_name in selectors_result_dict:
+                    weighted_selector_result_list.append(
+                        selectors_result_dict[selector_name] * weight_dict[selector_name])
                 return weighted_selector_result_list
             else:
-                return selector_result_list
+                return list(selectors_result_dict.values())
 
         def get_strategy_result_by_rank(gather_result, rank):
-            gather_rank = []
-            for date in gather_result.index.levels[0]:
-                gather_rank.append(gather_result.loc[date:date].rank(method="min", ascending=False))
-            gather_rank = pd.concat(gather_rank)
-            return gather_result[gather_rank <= rank]
+            return gather_result[gather_result.groupby(level=0).
+                   apply(lambda x:x.rank(method="min", ascending=False)<=rank)]
 
         def get_strategy_result_by_rank_pct(gather_result, rank_pct):
-            result = []
-            for date in gather_result.index.levels[0]:
-                result_by_date = gather_result.loc[date:date]
-                result.append(result_by_date[result_by_date >= result_by_date.quantile(1 - rank_pct)])
-            return pd.concat(result)
+            return gather_result[gather_result.groupby(level=0).apply(lambda x:x>=x.quantile(1 - rank_pct))]
 
         # 对选股器做加权处理
-        weighted_selector_result_list = get_weighted_selector_result_list(selector_name_list,
-                                                                          selector_result_list,
+        weighted_selector_result_list = get_weighted_selector_result_list(selectors_result_dict,
                                                                           weight_dict)
-
-        # 所有选股器累加（累积打分）
-        gather_result = reduce(strategy_fun, weighted_selector_result_list)
-        strategy_name = "+".join(selector_name_list)
+        # 所有选股器累加(累积打分)
+        gather_result = Admin.combine_selector(weighted_selector_result_list)
+        strategy_name = "+".join(list(selectors_result_dict.keys()))
 
         if rank_pct:  # 选股组合方案按权重【百分位排名】过滤 含并列
             gather_result = get_strategy_result_by_rank_pct(gather_result, rank_pct)
@@ -479,10 +412,9 @@ class Admin(object):
                       key=lambda x: x.key_performance_indicator["period_%s" % (target_period,)][target_indicator],
                       reverse=(ascending == False))
 
-    # 遍历list中各选股策略(含组合策略)的结果，计算其绩效表现，并汇总成列表——list
+    # 批量计算strategies_result_dict中所有选股方案(含组合方案)的表现，并汇总成列表——list
     def show_strategies_performance(self,
-                                    strategy_name_list,
-                                    strategy_result_list,
+                                    strategies_result_dict,
                                     start,
                                     end,
                                     periods=(1, 5, 10),
@@ -492,12 +424,11 @@ class Admin(object):
                                     price_low=None,
                                     parallel=False):
         """
-        批量计算strategy_name_list中所有选股方案(含组合方案)的表现。
-        :param strategy_name_list: 若干选股策略名称组成的列表(list)
-        　　　　如：['strategy_name_list_1','strategy_name_list_2',...]
-        :param strategy_result_list: 若干选股策略结果组成的列表(list)，与strategy_name_list一一对应。
-                                     每个选股策略结果（选股结果 或组合策略结果）格式为一个MultiIndex Series，
-                                     索引(index)为date(level 0)和asset(level 1),包含一列结果值。(>0:选出,0:不选,<0:做空)  形如:
+        批量计算strategies_result_dict中所有选股方案(含组合方案)的表现。
+        :param strategies_result_dict: 若干选股策略结果组成的字典(dict),形式为:
+                             {"strategy_name_1":strategy_1,"strategy_name_2:strategy_2}
+                           　每个选股策略结果(选股结果 或组合策略结果)格式为一个MultiIndex Series，
+                             索引(index)为date(level 0)和asset(level 1),包含一列结果值。(>0:选出,0:不选,<0:做空)  形如:
                                         -----------------------------------
                                             date    |    asset   |
                                         -----------------------------------
@@ -515,7 +446,7 @@ class Admin(object):
         :param end: 回测结束时间 datetime
         :param periods: 持有时间 tuple
         :param quantiles: 划分分位数 int
-        :param price （optional）:计算绩效时用到的的个股每日价格,通常为收盘价（close）。
+        :param price(optional):计算绩效时用到的的个股每日价格,通常为收盘价（close）。
                                  索引（index)为datetime,columns为各股票代码。pandas dataframe类型,形如:
                                        sh600011  sh600015  sh600018  sh600021  sh600028
                 datetime
@@ -544,10 +475,10 @@ class Admin(object):
             client = Client()
             lview = client.load_balanced_view()
             results = []
-            for i in range(len(strategy_name_list)):
+            for strategy_name in strategies_result_dict.keys():
                 results.append(lview.apply_async(self.calculate_performance,
-                                                 strategy_name_list[i],
-                                                 strategy_result_list[i],
+                                                 strategy_name,
+                                                 strategies_result_dict[strategy_name],
                                                  start,
                                                  end,
                                                  periods=periods,
@@ -560,10 +491,10 @@ class Admin(object):
             return strategies_performance
         else:
             strategies_performance = []
-            for i in range(len(strategy_name_list)):
+            for strategy_name in strategies_result_dict.keys():
                 result = _apply(self.calculate_performance,
-                                strategy_name_list[i],
-                                strategy_result_list[i],
+                                strategy_name,
+                                strategies_result_dict[strategy_name],
                                 start,
                                 end,
                                 periods=periods,
@@ -579,19 +510,17 @@ class Admin(object):
     def enumerate_selectors_weight(self,
                                    func,
                                    weight_range_dict,
-                                   selector_name_list=None,
+                                   selectors_result_dict = None,
                                    rank=10,
                                    rank_pct=None,
                                    parallel=False):
         """
         按指定的组合方法,枚举不同权重(不同打分),对若干选股器进行组合打分。
-
         :param func: 指定选股器的组合方法 选项有(admin.Intersection_Strategy/admin.Union_Strategy/admin.Rank_Strategy)
-        :param weight_range_dict: 描述selector_name_list当中每个选股器的权重优化空间。键为选股器名称，值为range对象，表示优化空间的起始、终止、步长。
-                                  如weight_range_dict = {“selector1”：range(0,10,1),"selector2":range(0,10,1)}
-                                  需至少包含了selector_name_list中列出的所有选股器
-        :param selector_name_list: 若干选股器名称组成的列表(list)
-        　　　　                    如：['selector_name_1','selector_name_2',...]
+        :param weight_range_dict: 描述每个选股器的权重优化空间。键为选股器名称，值为range对象，表示优化空间的起始、终止、步长。
+                                  如weight_range_dict = {"selector_name_1"：range(0,10,1),"selector_name_2":range(0,10,1)}
+        :param selectors_result_dict: 若干选股器结果组成的字典(dict),形式为:
+                                      {"selector_name_1":selector_1,"selector_name_2":selector_2}
         :param rank (optional):  选出得分排名前rank的股票(个数排名) (int)
         :param rank_pct (optional): 选出得分排名前rank_pct的股票(百分位排名) (float) ,与rank二选一。该参数有值的时候,rank参数失效。
         :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
@@ -606,14 +535,17 @@ class Admin(object):
 
         from itertools import product
 
-        if selector_name_list == None:
-            selector_name_list = self._all_selectors_name  # 默认组合包含了所有选股器
+        if not selectors_result_dict:
+            if not self._all_selectors_result:
+                raise TypeError("There is no selector calculated.")
+            else:
+                selectors_result_dict = self._all_selectors_result # 默认组合包含了所有选股器
 
-        if not (len(list(weight_range_dict.keys())) >= len(selector_name_list)):
-            raise TypeError("weight_range_dict doesn't match selector_name_list")
+        if len(list(selectors_result_dict.keys())) < 2: #至少要有两个选股器
+            raise TypeError("you must give more than 2 selectors.")
 
         parameter_dict = {}
-        for selector_name in selector_name_list:
+        for selector_name in selectors_result_dict.keys():
             parameter_dict[selector_name] = weight_range_dict[selector_name]
 
         keys = list(parameter_dict.keys())
@@ -625,9 +557,7 @@ class Admin(object):
             for value in product(*parameter_dict.values()):
                 weight_dict = dict(zip(keys, value))
                 results.append(lview.apply_async(func,
-                                                 selector_name_list,
-                                                 [self._all_selectors_result[selector_name] for selector_name in
-                                                  selector_name_list],
+                                                 selectors_result_dict,
                                                  rank,
                                                  rank_pct,
                                                  weight_dict))
@@ -639,82 +569,12 @@ class Admin(object):
             for value in product(*parameter_dict.values()):
                 weight_dict = dict(zip(keys, value))
                 results.append(_apply(func,
-                                      selector_name_list,
-                                      [self._all_selectors_result[selector_name] for selector_name in
-                                       selector_name_list],
+                                      selectors_result_dict,
                                       rank,
                                       rank_pct,
                                       weight_dict))
             return results
 
-    # 遍历给定的一系列的选股器组合方式
-    def combinate_selectors_result(self,
-                                   func,
-                                   selector_name_lists,
-                                   rank=10,
-                                   rank_pct=None,
-                                   weight_dict_list=None,
-                                   parallel=False):
-
-        """
-        从若干选股器中枚举不同的搭配方案,按指定的组合办法,求每一种搭配方案的组合结果,并汇总成list
-
-        :param func: 指定选股器的组合方法 选项有(admin.Intersection_Strategy/admin.Union_Strategy/admin.Rank_Strategy)
-        :param selector_name_lists:不同种选股器搭配方案的汇总表(list),每个元素是一个元组(tuple),代表了一种搭配方案。
-                                   可输入一组选股器名单(selector_name_list)
-                                   通过Admin.combination和Admin.max_combination获得。
-                                   形如:
-                                   [(selector_name_1,),(selector_name_1,selector_name_2),(selector_name_1,selector_name_2,selector_name_3),]
-        :param rank (optional):  选出得分排名前rank的股票(个数排名) (int)
-        :param rank_pct (optional): 选出得分排名前rank_pct的股票(百分位排名) (float) ,与rank二选一。该参数有值的时候,rank参数失效。
-        :param weight_dict_list: 每种搭配方案下,各选股器权重设置所组成的列表(list),默认为等权重。
-                                 列表中的每个元素都对应一种搭配方案的权重(dict)
-                                 其中,
-                                 字典键为选股器名称(str),包含了该种搭配方案所有的选股器;
-                                 字典值为float,代表对应选股器的给分权重。
-                                 形如: [{'selector_name_1':1.0},{'selector_name_1':1.0,'selector_name_2':2.0,...} ,]
-        :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
-        :return: 不同搭配方案下的组合选股结果
-                 格式为由Strategy 对象所组成的列表(list),
-                 每个由Strategy 对象包含"strategy_name", "strategy_result", "weight_dict"三个属性。
-                 "strategy_name":组合的选股结果名称(str)
-                 "strategy_result":组合的选股结果(格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
-            　　　  　              包含一列结果值。(>0:选出,0:不选,<0:做空))
-                 "weight_dict":各选股器权重所组成的dict(dict/None)
-        """
-
-        if weight_dict_list == None:
-            weight_dict_list = [None] * len(selector_name_lists)
-        else:
-            if not (len(weight_dict_list) == len(selector_name_lists)):
-                raise TypeError("length of weight_dict_list doesn't match selector_name_lists")
-
-        if parallel:
-            client = Client()
-            lview = client.load_balanced_view()
-            results = []
-            for i in range(len(selector_name_lists)):
-                results.append(lview.apply_async(func,
-                                                 selector_name_lists[i],
-                                                 [self._all_selectors_result[selector_name] for selector_name in
-                                                  selector_name_lists[i]],
-                                                 rank,
-                                                 rank_pct,
-                                                 weight_dict_list[i]))
-            lview.wait(results)
-            combination_results = [result.get() for result in results]
-            return combination_results
-        else:
-            results = []
-            for i in range(len(selector_name_lists)):
-                results.append(_apply(func,
-                                      selector_name_lists[i],
-                                      [self._all_selectors_result[selector_name] for selector_name in
-                                       selector_name_lists[i]],
-                                      rank,
-                                      rank_pct,
-                                      weight_dict_list[i]))
-            return results
 
     @staticmethod
     # 计算选股器指定时间段的选股结果
@@ -724,13 +584,13 @@ class Admin(object):
                                                      end,
                                                      Selector=None,
                                                      data=None,
-                                                     data_config=None,
+                                                     data_config={"freq": "D", "api": "candle", "adjust": "after"},
                                                      para_dict=None,
                                                      ):
 
         """
-        计算某个选股器指定时间段的选股结果
-        :param selector_name: 选股器名称（str） 需确保传入的selector_name、选股器的类名、对应的module文件名一致(不含.后缀),选股器才能正确加载
+        计算某个选股器指定时间段的选股结果(可支持直接用selector_name加载到对应因子的算法)
+        :param selector_name: 选股器名称(str) 需确保传入的selector_name、选股器的类名、对应的module文件名一致(不含.后缀),选股器才能正确加载
         :param pool: 股票池范围（list),如：["000001.XSHE","600300.XSHG",......]
         :param start: 起始时间 (datetime)
         :param end: 结束时间 (datetime)
@@ -756,12 +616,6 @@ class Admin(object):
                                                     |   LULU     |   -1
                                                     -----------------------
         """
-
-        # 通过选股器名称获取选股器
-
-        if data_config is None:
-            data_config = {"freq": "D", "api": "candle", "adjust": "after"}
-
         # 实例化选股器
         if Selector is None:
             selector = _get_selector(selector_name, Admin.PACKAGE_NAME)()
@@ -808,7 +662,7 @@ class Admin(object):
         :param data_config (optional): 在data参数为None的情况下(不传入自定义数据),可通过该参数调用fxdayu_data api 访问到数据 (dict)
         :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
         :return: selector_result_by_para_list, para_dict_list
-                 selector_result_by_para_list：不同参数下得到的选股结果所组成的list（list）
+                 selector_result_by_para_list：不同参数下得到的选股结果所组成的list(list)
                  para_dict_list：不同参数集所组成的list（list），与selector_result_by_para_list一一对应。
                                  每个参数集格式为dict，形如:{"fast":5,"slow":10}
         """
@@ -950,38 +804,3 @@ class Admin(object):
                         all_selectors_data_config_dict[selector_name],
                         all_selectors_para_dict[selector_name])
             return self._all_selectors_result
-
-    # 组合
-    def combination(self, alist, order=1):
-        """
-        输入一个列表,输出列表当中的指定阶数的组合方案。
-
-        :param alist: 任意列表(list) 如[1,2,3]
-        :param order: 组合的阶数 (int) 如2
-        :return: 组合方案(list),当中的元素为元组(tuple),代表一种组合方案
-                 形如[(1,2,),(1,3,),(2,3,)]
-        """
-        import itertools
-        if order > len(alist):
-            order = len(alist)
-        return list(itertools.combinations(alist, order))
-
-    # 以下全部组合
-    def max_combination(self, alist, max_order=1):
-
-        """
-        输入一个列表,输出列表当中的指定阶数下(含该阶数)的所有组合方案。
-
-        :param alist: 任意列表(list) 如[1,2,3]
-        :param max_order: 组合的最大阶数 (int) 如2
-        :return: 组合方案(list),当中的元素为元组(tuple),代表一种组合方案
-                 形如[(1,),(2,),(3,),(1,2,),(1,3,),(2,3,)] (含1阶组合和2阶组合)
-        """
-        import itertools
-
-        if max_order > len(alist):
-            max_order = len(alist)
-        result = []
-        for i in range(1, max_order + 1):
-            result.extend(list(itertools.combinations(alist, i)))
-        return result

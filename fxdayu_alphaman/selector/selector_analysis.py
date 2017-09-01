@@ -452,7 +452,7 @@ def get_upside_returns( factor,
     merged_data = compute_upside_returns(prices, prices_high, periods, filter_zscore)
 
     factor = factor.copy()
-    factor.index = factor.index.rename(['date', 'asset'])
+    factor.index = factor.index.rename(['datetime', 'asset'])
     merged_data['factor'] = factor
 
     merged_data = merged_data.dropna()
@@ -544,7 +544,7 @@ def align_return_series(return_series,start,end):
 
     return_series = return_series.reset_index()
 
-    # 将时间（date）全部标准化到收盘后（15:00:00）
+    # 将时间(date)全部标准化到收盘后（15:00:00）
     return_series["date"] = list(map(time15, return_series["date"]))
 
     series_name = return_series["factor_quantile"].loc[0]

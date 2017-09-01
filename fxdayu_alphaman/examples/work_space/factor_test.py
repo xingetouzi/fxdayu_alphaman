@@ -49,7 +49,10 @@ def test_performance(factor, prices):
     from alphalens import utils, performance, plotting
 
     # 持股收益-逐只
-    stocks_holding_return = utils.get_clean_factor_and_forward_returns(factor, prices, quantiles=5, periods=(1, 5, 10))
+    stocks_holding_return = utils.get_clean_factor_and_forward_returns(factor,
+                                                                       prices,
+                                                                       quantiles=5,
+                                                                       periods=(1, 5, 10))
 
     print("因子的IC值：")
     ic = performance.factor_information_coefficient(stocks_holding_return)
@@ -60,38 +63,52 @@ def test_performance(factor, prices):
     plt.show()
 
     print("平均IC值-月：")
-    mean_ic = performance.mean_information_coefficient(stocks_holding_return, by_time="M")
+    mean_ic = performance.mean_information_coefficient(stocks_holding_return,
+                                                       by_time="M")
     plotting.plot_monthly_ic_heatmap(mean_ic)
     plt.show()
 
     # 按quantile区分的持股平均收益（减去了总体平均值）
-    mean_return_by_q = performance.mean_return_by_quantile(stocks_holding_return, by_date=True, demeaned=True)[0]
+    mean_return_by_q = performance.mean_return_by_quantile(stocks_holding_return,
+                                                           by_date=True,
+                                                           demeaned=True)[0]
     # 按quantile画出累积持有收益
     for i in [1, 5, 10]:
-        plotting.plot_cumulative_returns_by_quantile(mean_return_by_q, period=i)
+        plotting.plot_cumulative_returns_by_quantile(mean_return_by_q,
+                                                     period=i)
         plt.show()
 
 
 factor = unit_test1(data)
 test_performance(factor, prices)
-#
-# # 参数优化
+
+# 参数优化
 admin = Admin()
-original_perf = admin.calculate_performance("Factor_Volume001", factor, start, end, periods=(1, 5, 10), quantiles=5,
+original_perf = admin.calculate_performance("Factor_Volume001",
+                                            factor,
+                                            start,
+                                            end,
+                                            periods=(1, 5, 10),
+                                            quantiles=5,
                                             price=prices)
 print(original_perf.mean_ic)  # 以前的绩效－ic
 
-para_range_dict = {"c": range(4, 11, 1)}
-factor_value_list, para_dict_list = admin.enumerate_parameter("Factor_Volume001", para_range_dict, initial_codes, start,
+para_range_dict = {"c": range(7, 11, 1)}
+factor_value_list, para_dict_list = admin.enumerate_parameter("Factor_Volume001",
+                                                              para_range_dict,
+                                                              initial_codes, start,
                                                               end,
                                                               data_config=data_config)
 
-factor_name_list = []
-for para_dict in para_dict_list:
-    factor_name_list.append("Factor_Volume001+" + str(para_dict))
+factor_name_list = ["Factor_Volume001+" + str(para_dict) for para_dict in para_dict_list]
+factors_dict = dict(zip(factor_name_list,factor_value_list))
 
-performance_list = admin.show_factors_performance(factor_name_list, factor_value_list, start, end, periods=(1, 5, 10),
-                                                  quantiles=5, price=prices)
+performance_list = admin.show_factors_performance(factors_dict,
+                                                  start,
+                                                  end,
+                                                  periods=(1, 5, 10),
+                                                  quantiles=5,
+                                                  price=prices)
 
 print("#####################################################################################")
 # 按绩效指标对结果排序（寻优） 本例按10天持有期的mean_IC降序排列了所有结果。
