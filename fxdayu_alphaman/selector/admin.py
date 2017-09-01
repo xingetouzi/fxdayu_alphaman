@@ -39,7 +39,7 @@ class Admin(object):
         """
         对若干选股方案取交集
         :param selectors_result_dict: 若干选股器结果组成的字典(dict),形式为:
-                             {"selector_name_1":selector_1,"selector_name_2:selector_2}
+                             {"selector_name_1":selector_1,"selector_name_2":selector_2}
                            　每个选股器结果(selector_result)格式为一个MultiIndex Series，索引(index)为date(level 0)和asset(level 1),
                              包含一列结果值。(1:选出,0:不选,-1:做空)  形如:
                                         -----------------------------------
@@ -445,7 +445,22 @@ class Admin(object):
         :param start: 回测起始时间 datetime
         :param end: 回测结束时间 datetime
         :param periods: 持有时间 tuple
-        :param quantiles: 划分分位数 int
+        :param benchmark_return(optional): 基准收益 mulitiIndex.索引(index)为factor_quantile(level 0)和date(level 1),
+                                           columns 为持有时间(与periods一一对应)。形如：
+                                                         1         5         10
+                factor_quantile date
+                HS300           2013-01-01 15:00:00  0.000000  0.000000  0.000000
+                                2013-01-02 15:00:00  0.000000  0.000000  0.000000
+                                2013-01-03 15:00:00  0.000000  0.000000  0.000000
+                                2013-01-04 15:00:00  0.004587 -0.016313  0.028137
+                                2013-01-05 15:00:00  0.000000  0.000000  0.000000
+                                2013-01-06 15:00:00  0.000000  0.000000  0.000000
+                                2013-01-07 15:00:00 -0.004203  0.016459  0.029539
+                                2013-01-08 15:00:00  0.000317  0.027929  0.028341
+                                2013-01-09 15:00:00  0.001758  0.020173  0.032195
+                                2013-01-10 15:00:00 -0.018707  0.008769  0.020620
+                                .................................................
+
         :param price(optional):计算绩效时用到的的个股每日价格,通常为收盘价（close）。
                                  索引（index)为datetime,columns为各股票代码。pandas dataframe类型,形如:
                                        sh600011  sh600015  sh600018  sh600021  sh600028
@@ -462,7 +477,7 @@ class Admin(object):
                 .....................................................................
         :param price_high (optional):计算绩效时用到的的个股每日最高价格,pandas dataframe类型,形同price
         :param price_low (optional):计算绩效时用到的的个股每日最低价格,pandas dataframe类型,形同price
-        :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
+        :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在jupyter notebook下启动工作脚本。
         :return:选股方案的表现 (Performance object)所组成的列表(list),
                 列表里每个元素为选股方案的表现 (Performance object)
                 包含"strategy_name","mean_return","key_performance_indicator",
@@ -523,7 +538,7 @@ class Admin(object):
                                       {"selector_name_1":selector_1,"selector_name_2":selector_2}
         :param rank (optional):  选出得分排名前rank的股票(个数排名) (int)
         :param rank_pct (optional): 选出得分排名前rank_pct的股票(百分位排名) (float) ,与rank二选一。该参数有值的时候,rank参数失效。
-        :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
+        :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在jupyter notebook下启动工作脚本。
         :return: 不同权重下的组合选股结果
                  格式为由Strategy 对象所组成的列表(list),
                  每个由Strategy 对象包含"strategy_name", "strategy_result", "weight_dict"三个属性。
@@ -653,14 +668,14 @@ class Admin(object):
         # 枚举选股器的不同参数
         :param selector_name: 选股器名称（str） 需确保传入的selector_name、选股器的类名、对应的module文件名一致(不含.后缀),选股器才能正确加载
         :param para_range_dict: 描述了selector当中待优化参数的选择空间（dict）。键为参数名称，值为range对象，表示优化空间的起始、终止、步长。
-               如：para_range_dict = {“fast”：range(0,10,1),"slow":range(0,10,1)}.
+               如：para_range_dict = {"fast"：range(0,10,1),"slow":range(0,10,1)}.
         :param pool: 股票池范围（list),如：["000001.XSHE","600300.XSHG",......]
         :param start: 起始时间 (datetime)
         :param end: 结束时间 (datetime)
         :param Selector (optional): 选股器(selector.selector.Selector object),可选.可以输入一个设计好的Selector类来执行计算.
         :param data (optional): 计算选股结果需用到的数据,根据计算需求自行指定。(可选)
         :param data_config (optional): 在data参数为None的情况下(不传入自定义数据),可通过该参数调用fxdayu_data api 访问到数据 (dict)
-        :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
+        :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在jupyter notebook下启动工作脚本。
         :return: selector_result_by_para_list, para_dict_list
                  selector_result_by_para_list：不同参数下得到的选股结果所组成的list(list)
                  para_dict_list：不同参数集所组成的list（list），与selector_result_by_para_list一一对应。
@@ -729,21 +744,21 @@ class Admin(object):
         :param end: 结束时间 (datetime)
         :param all_Selectors_dict(optional):加载到admin下的所有Selector类(selector.selector.Selector object)构成的字典, 可选.
                                       可以输入一系列设计好的选股器类(与Admin._all_selectors_name一一对应)直接执行计算.
-                                      形如:{“selector_name_1”:Selector_1,selector_name_2”:Selector_2,...}
+                                      形如:{"selector_name_1":Selector_1,"selector_name_2":Selector_2,...}
         :param all_selectors_data_dict （optional): 计算选股器需用到的自定义数据组成的字典（dict）,根据计算需求自行指定。
                                                     字典键名为所有载入的选股器的选股器名(admin._all_selectors_name),值为对应选股器所需的数据。
-                                                    形如：{“selector_name_1”:data_1,selector_name_2”:data_2,...}
+                                                    形如：{"selector_name_1":data_1,"selector_name_2":data_2,...}
         :param all_selectors_data_config_dict (optional):  在all_selectors_data_dict参数为None的情况下(不传入自定义数据),
                                                           可通过该参数调用fxdayu_data api 访问到数据 (dict).
                                                           与 all_selectors_data_dict 二选一（未指定数据通过fxdayu_data api获取）.
                                                           字典键名为所有载入的选股器的选股器名(admin._all_selectors_name),
                                                           值为对应选股器所需的数据api访问参数设置dict(data_config)。
-                                                          形如：{“selector_name_1”:data_config_1,selector_name_2”:data_config_2,...}
+                                                          形如：{"selector_name_1":data_config_1,"selector_name_2":data_config_2,...}
         :param all_selectors_para_dict (optional): 所有选股器外部指定参数集(dict)所构成的字典(dict),可选。为空则不修改选股器原有参数。
                                                    字典键名为所有载入的选股器的选股器名(admin._all_selectors_name),
                                                    值为对应选股器的指定参数集(dict)。
-                                                   形如: {“selector_name_1”:{"fast":5,"slow":10},selector_name_2”:{"fast":4,"slow":7},...}
-        :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
+                                                   形如: {"selector_name_1":{"fast":5,"slow":10},"selector_name_2":{"fast":4,"slow":7},...}
+        :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在jupyter notebook下启动工作脚本。
         :param update: 是否更新已有记录值(bool)。默认为False——如果admin曾经计算过所有选股器结果,则不再重复计算。 True 则更新计算所加载的选股器结果。
         :return: all_selectors_result : admin下加载的所有选股器的选股器结果(dict)。
                                        字典键名为所有载入的选股器的选股器名(admin._all_selectors_name)

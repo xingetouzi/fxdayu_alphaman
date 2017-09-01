@@ -170,7 +170,7 @@ class Admin(object):
         :param price (optional): 包含了pool中所有股票的价格时间序列(pd.Dataframe)，索引（index)为datetime,columns为各股票代码，与pool对应。
         :return: ic_df_dict 指定的不同周期下的多个因子ｉc值序列矩阵所组成的字典(dict), 键为周期（int），值为因子ic值序列矩阵(ic_df)。
                  如：｛１:ic_df_1,5:ic_df_5,10:ic_df_10｝
-                 ic_df(ic值序列矩阵) 类型pd.Dataframe，索引（index）为datetime,columns为各因子名称，与factors_dict中的对应。
+                 ic_df(ic值序列矩阵) 类型pd.Dataframe,索引（index）为datetime,columns为各因子名称，与factors_dict中的对应。
                  如：
 
                 　　　　　　　　　　　BP	　　　CFP	　　　EP	　　ILLIQUIDITY	REVS20	　　　SRMI	　　　VOL20
@@ -504,7 +504,7 @@ class Admin(object):
                 2014-10-17 15:00:00    18.349    17.535       NaN     7.272     9.611
                 2014-10-20 15:00:00    18.319    17.618       NaN     7.360     9.629
                 .....................................................................
-        :param parallel: 是否执行并行计算(bool) 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
+        :param parallel: 是否执行并行计算(bool) 默认不执行。 如需并行计算需要在jupyter notebook下启动工作脚本。
         :return:因子的表现 (Performance object)所组成的列表(list),
                 列表里每个元素为因子的表现 (Performance object)
                 包含"factor_name", "holding_return", "mean_return_by_q", "ic", "mean_ic_by_M", "mean_ic"这些属性。
@@ -623,7 +623,7 @@ class Admin(object):
         # 枚举不同参数下的所得到的不同因子值
         :param factor_name: 因子名称（str） 需确保传入的factor_name、因子的类名、对应的module文件名一致(不含.后缀),因子才能正确加载
         :param para_range_dict: 述了factor当中待优化参数的选择空间（dict）。键为参数名称，值为range对象，表示优化空间的起始、终止、步长。
-               如：para_range_dict = {“fast”：range(0,10,1),"slow":range(0,10,1)}.
+               如：para_range_dict = {"fast"：range(0,10,1),"slow":range(0,10,1)}.
         :param pool: 股票池范围（list),如：["000001.XSHE","600300.XSHG",......]
         :param start: 起始时间 (datetime)
         :param end: 结束时间 (datetime)
@@ -631,7 +631,7 @@ class Admin(object):
         :param data (optional): 计算因子需用到的数据,根据计算需求自行指定。(可选)
         :param data_config (optional): 在data参数为None的情况下(不传入自定义数据),可通过该参数调用fxdayu_data api 访问到数据 (dict)
         :param factor_package_name: 因子所在的package名称 (str)
-        :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
+        :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在jupyter notebook下启动工作脚本。
         :return: factor_value_by_para_list, para_dict_list
                  factor_value_by_para_list：不同参数下得到的因子值所组成的list
                  para_dict_list：不同参数集所组成的list（list），与factor_value_by_para_list一一对应。
@@ -699,21 +699,21 @@ class Admin(object):
         :param end: 结束时间 (datetime)
         :param all_Factors_dict (optional):加载到admin下的所有因子类(factor.factor.Factor object)构成的字典, 可选.
                                       可以输入一系列设计好的Factor类(与Admin._all_factors_name一一对应)直接执行计算.
-                                      形如:{“factor_name_1”:Factor_1,factor_name_2”:Factor_2,...}
+                                      形如:{"factor_name_1”:Factor_1,"factor_name_2":Factor_2,...}
         :param all_factors_data_dict(optional): 计算因子需用到的自定义数据组成的字典（dict）,根据计算需求自行指定。
                                                   字典键名为所有载入的因子的因子名(admin._all_factors_name),值为对应因子所需的数据。
-                                                  形如：{“factor_name_1”:data_1,factor_name_2”:data_2,...}
+                                                  形如：{"factor_name_1":data_1,"factor_name_2":data_2,...}
         :param all_factors_data_config_dict (optional):  在all_factors_data_dict参数为None的情况下(不传入自定义数据),
                                                          可通过该参数调用fxdayu_data api 访问到数据 (dict).
                                                          与 all_factors_data_dict 二选一（未指定数据通过fxdayu_data api获取）.
                                                          字典键名为所有载入的因子的因子名(admin._all_factors_name),
                                                          值为对应因子所需的数据api访问参数设置dict(data_config)。
-                                                         形如：{“factor_name_1”:data_config_1,factor_name_2”:data_config_2,...}
+                                                         形如：{"factor_name_1":data_config_1,"factor_name_2":data_config_2,...}
         :param all_factors_para_dict (optional): 所有因子外部指定参数集(dict)所构成的字典(dict),可选。为空则不修改因子原有参数。
                                                  字典键名为所有载入的因子的因子名(admin._all_factors_name),
                                                  值为对应因子的指定参数集(dict)。
-                                                 形如: {“factor_name_1”:{"fast":5,"slow":10},factor_name_2”:{"fast":4,"slow":7},...}
-        :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在ipython notebook下启动工作脚本。
+                                                 形如: {"factor_name_1":{"fast":5,"slow":10},"factor_name_2":{"fast":4,"slow":7},...}
+        :param parallel: 是否执行并行计算（bool） 默认不执行。 如需并行计算需要在jupyter notebook下启动工作脚本。
         :param update: 是否更新已有记录值(bool)。默认为False——如果admin曾经计算过所有因子值,则不再重复计算。 True 则更新计算所加载的因子值。
         :return: all_factors_dict :  admin下加载的所有因子的因子值(dict)。
                                      字典键名为所有载入的因子的因子名(admin._all_factors_name)
