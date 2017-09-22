@@ -297,7 +297,7 @@ class RollingRgr(_BaseRolling):
             else:
                 ind = true_y.index
                 model = clone(pre_model)
-                model = model.fit(train_X, train_y.ravel())
+                model = model.fit(train_X, train_y.values.ravel())
                 self.models.append(model)
                 prediction = model.predict(predict_X)
                 prediction = pd.Series(prediction, index=ind, name="predict")
@@ -392,19 +392,19 @@ class StaticClf(_Classifier, _BaseStatic):
         """
 
         if func == 'pct':
-            func = partial(self._pct_cut, **kwargs)
+            func = partial(pct_cut, **kwargs)
 
         elif func == 'zero':
-            func = self._zero_cut
+            func = zero_cut
 
         elif func == 'equal':
-            func = partial(self._equal_cut, **kwargs)
+            func = partial(equal_cut, **kwargs)
 
         elif not callable(func):
             raise ValueError
 
         if xsection:
-            self.labeled = self.trainY.groupby(level=0).transfrom(func).dropna()
+            self.labeled = self.trainY.groupby(level=0).transform(func).dropna()
 
         else:
             self.labeled = self.trainY.transform(func).dropna()
