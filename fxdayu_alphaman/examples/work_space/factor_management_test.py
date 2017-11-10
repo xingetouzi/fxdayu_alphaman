@@ -22,7 +22,7 @@ initial_codes = standard_code_style(json.load(open('test_stock_pool.json'))["tes
 data_config = {"freq": "D", "api": "candle", "adjust": "after"}
 
 # 测试参数设置
-start = datetime.datetime(2016, 1, 1)
+start = datetime.datetime(2017, 1, 1)
 end = datetime.datetime(2017, 4, 18, 15)
 periods = (1, 5, 10)
 
@@ -65,6 +65,7 @@ ic_df = factor_admin.get_factors_ic_df(factors_dict,
                                        periods=(1, 5, 10),
                                        quantiles=5,
                                        price=prices)
+
 # 2) 计算因子权重
 holding_period = 10
 ic_weight_df = factor_admin.get_ic_weight_df(ic_df[holding_period],

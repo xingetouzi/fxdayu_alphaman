@@ -207,6 +207,8 @@ class Admin(object):
             ic = performance.factor_information_coefficient(stocks_holding_return)
             ic_dict[factor_name] = ic
 
+        # 获取factor_value的时间（index）,将用来生成 factors_ic_df 的对应时间（index）
+        times = sorted(pd.concat([pd.Series(factors_dict[factor_name].index.levels[0]) for factor_name in factors_dict.keys()]).unique())
         ic_df_dict = {}
         for period in periods:
             ic_table = []
@@ -215,6 +217,7 @@ class Admin(object):
                 ic_by_period.columns = [factor_name, ]
                 ic_table.append(ic_by_period)
             ic_df_dict[period] = pd.concat(ic_table, axis=1).dropna()
+            ic_df_dict[period] = ic_df_dict[period].reindex(times)
 
         return ic_df_dict
 
@@ -292,7 +295,10 @@ class Admin(object):
             ic_dt = ic_df[ic_df.index < dt].tail(n)
             if len(ic_dt) < n:
                 continue
-            ic_cov_mat = lw.fit(ic_dt.as_matrix()).covariance_
+            try:
+                ic_cov_mat = lw.fit(ic_dt.as_matrix()).covariance_
+            except:
+                ic_cov_mat = np.mat(np.cov(ic_dt.T.as_matrix()).astype(float))
             inv_ic_cov_mat = np.linalg.inv(ic_cov_mat)
             weight = inv_ic_cov_mat * np.mat(ic_dt.mean()).reshape(len(inv_ic_cov_mat), 1)
             weight = np.array(weight.reshape(len(weight), ))[0]
