@@ -154,7 +154,8 @@ class Admin(object):
                           start,
                           end,
                           periods=(1, 5, 10),
-                          quantiles=5,
+                          quantiles=None,
+                          bins=None,
                           price=None):
         """
         获取指定周期下的多个因子ic值序列矩阵
@@ -203,7 +204,7 @@ class Admin(object):
             factor_value = factors_dict[factor_name]
             # 持股收益-逐只
             stocks_holding_return = utils.get_clean_factor_and_forward_returns(factor_value, price, quantiles=quantiles,
-                                                                               periods=periods)
+                                                                               bins=bins, periods=periods)
             ic = performance.factor_information_coefficient(stocks_holding_return)
             ic_dict[factor_name] = ic
 
