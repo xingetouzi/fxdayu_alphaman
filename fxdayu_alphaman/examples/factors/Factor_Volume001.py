@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from fxdayu_alphaman.factor.factor import Factor
+from fxdayu_alphaman.factor import Factor
 
 
 class Factor_Volume001(Factor):

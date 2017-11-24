@@ -5,7 +5,7 @@ import pandas as pd
 from fxdayu_data import DataAPI
 from talib.abstract import MACD
 
-from fxdayu_alphaman.selector.selector import Selector
+from fxdayu_alphaman.selector import Selector
 
 
 class DayMACD(Selector):

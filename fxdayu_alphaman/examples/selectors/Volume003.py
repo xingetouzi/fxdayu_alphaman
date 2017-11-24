@@ -6,7 +6,7 @@ import alphalens
 from fxdayu_data import DataAPI
 
 from fxdayu_alphaman.examples.factors.Factor_Volume003 import Factor_Volume003
-from fxdayu_alphaman.selector.selector import Selector
+from fxdayu_alphaman.selector import Selector
 
 
 class Volume003(Selector):

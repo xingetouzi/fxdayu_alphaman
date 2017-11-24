@@ -5,7 +5,7 @@ import pandas as pd
 from fxdayu_data import DataAPI
 from talib.abstract import MA
 
-from fxdayu_alphaman.selector.selector import Selector
+from fxdayu_alphaman.selector import Selector
 
 
 class DayMA(Selector):
