@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
-import tushare as ts
 from fxdayu_data import DataAPI
 
 class Strategy(object):
@@ -54,41 +53,22 @@ def read_benchmark(start, end, index_code="000300.XSHG", freq="D"):
                      "low":最低价。(pandas.Dateframe ),index为datetime,column.name 为index_code,值为对应指数的最低价。
     """
     benchmark = Benchmark()
-    try:
-        benchmark_value = DataAPI.candle((index_code,), freq=freq, start=start, end=end)
-        benchmark.open = benchmark_value.minor_xs("open")
-        if len(benchmark.open)==0:
-            raise ValueError
-        benchmark.high = benchmark_value.minor_xs("high")
-        benchmark.low = benchmark_value.minor_xs("low")
-        benchmark.close = benchmark_value.minor_xs("close")
-        benchmark.open.index.name = "date"
-        benchmark.high.index.name = "date"
-        benchmark.low.index.name = "date"
-        benchmark.close.index.name = "date"
-    except:
-        index_value = ts.get_k_data(code=index_code[0:6], start=start.strftime("%Y-%m-%d"),
-                                    end=end.strftime("%Y-%m-%d"), ktype=freq, index=True)
-        date = index_value.pop('date')
-        index_value["date"] = pd.to_datetime(date + " 15:00:00", format='%Y-%m-%d %H:%M:%S')
-        benchmark.close = index_value[["date", "close"]]
-        benchmark.open = index_value[["date", "open"]]
-        benchmark.high = index_value[["date", "high"]]
-        benchmark.low = index_value[["date", "low"]]
-        benchmark.close.columns = ["date", index_code]
-        benchmark.open.columns = ["date", index_code]
-        benchmark.high.columns = ["date", index_code]
-        benchmark.low.columns = ["date", index_code]
-        benchmark.close = benchmark.close.set_index("date")
-        benchmark.open = benchmark.open.set_index("date")
-        benchmark.high = benchmark.high.set_index("date")
-        benchmark.low = benchmark.low.set_index("date")
+    benchmark_value = DataAPI.candle((index_code,), freq=freq, start=start, end=end)
+    benchmark.open = benchmark_value.minor_xs("open")
+    if len(benchmark.open)==0:
+        raise ValueError
+    benchmark.high = benchmark_value.minor_xs("high")
+    benchmark.low = benchmark_value.minor_xs("low")
+    benchmark.close = benchmark_value.minor_xs("close")
+    benchmark.open.index.name = "date"
+    benchmark.high.index.name = "date"
+    benchmark.low.index.name = "date"
+    benchmark.close.index.name = "date"
 
     benchmark.index = pd.DataFrame(data=benchmark.open.index)
     benchmark.index["asset"] = index_code
     benchmark.index["factor"] = 1
     benchmark.index = benchmark.index.set_index(["date", "asset"])
-
     return benchmark
 
 def standard_code_style(symbols):

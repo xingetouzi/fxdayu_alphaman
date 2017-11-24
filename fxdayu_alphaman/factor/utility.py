@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import tushare as ts
 import pandas as pd
 import numpy as np
-import os
 from fxdayu_data import DataAPI
 
 class MultiFactor(object):
@@ -53,41 +51,22 @@ def read_benchmark(start, end, index_code="000300.XSHG", freq="D"):
                      "low":最低价。(pandas.Dateframe ),index为datetime,column.name 为index_code,值为对应指数的最低价。
     """
     benchmark = Benchmark()
-    try:
-        benchmark_value = DataAPI.candle((index_code,), freq=freq, start=start, end=end)
-        benchmark.open = benchmark_value.minor_xs("open")
-        if len(benchmark.open)==0:
-            raise ValueError
-        benchmark.high = benchmark_value.minor_xs("high")
-        benchmark.low = benchmark_value.minor_xs("low")
-        benchmark.close = benchmark_value.minor_xs("close")
-        benchmark.open.index.name = "date"
-        benchmark.high.index.name = "date"
-        benchmark.low.index.name = "date"
-        benchmark.close.index.name = "date"
-    except:
-        index_value = ts.get_k_data(code=index_code[0:6], start=start.strftime("%Y-%m-%d"),
-                                    end=end.strftime("%Y-%m-%d"), ktype=freq, index=True)
-        date = index_value.pop('date')
-        index_value["date"] = pd.to_datetime(date + " 15:00:00", format='%Y-%m-%d %H:%M:%S')
-        benchmark.close = index_value[["date", "close"]]
-        benchmark.open = index_value[["date", "open"]]
-        benchmark.high = index_value[["date", "high"]]
-        benchmark.low = index_value[["date", "low"]]
-        benchmark.close.columns = ["date", index_code]
-        benchmark.open.columns = ["date", index_code]
-        benchmark.high.columns = ["date", index_code]
-        benchmark.low.columns = ["date", index_code]
-        benchmark.close = benchmark.close.set_index("date")
-        benchmark.open = benchmark.open.set_index("date")
-        benchmark.high = benchmark.high.set_index("date")
-        benchmark.low = benchmark.low.set_index("date")
+    benchmark_value = DataAPI.candle((index_code,), freq=freq, start=start, end=end)
+    benchmark.open = benchmark_value.minor_xs("open")
+    if len(benchmark.open)==0:
+        raise ValueError
+    benchmark.high = benchmark_value.minor_xs("high")
+    benchmark.low = benchmark_value.minor_xs("low")
+    benchmark.close = benchmark_value.minor_xs("close")
+    benchmark.open.index.name = "date"
+    benchmark.high.index.name = "date"
+    benchmark.low.index.name = "date"
+    benchmark.close.index.name = "date"
 
     benchmark.index = pd.DataFrame(data=benchmark.open.index)
     benchmark.index["asset"] = index_code
     benchmark.index["factor"] = 1
     benchmark.index = benchmark.index.set_index(["date", "asset"])
-
     return benchmark
 
 def standard_code_style(symbols):
@@ -137,19 +116,13 @@ def get_industry_class(symbols):
     :param symbols: 一组股票代码(list),形式为通用标准(编码.交易所 如["000001.XSHE","600000.XSHG"])
     :return: sina的行业分类信息。(pandas.Dataframe) index为行业分类编号(1-49);columns为股票代码;值为0/1,分别表示属于该行业/不属于该行业
     """
-    if not os.path.exists('classified.xlsx'):
-        sina_industy_class = ts.get_industry_classified()
-        sina_industy_class.to_excel('classified.xlsx')
-    else:
-        sina_industy_class = pd.read_excel("classified.xlsx")
 
-    sina_industy_class["c_name"] = sina_industy_class["c_name"].rank(method="dense", ascending=True).astype(int)
-    class_num = sina_industy_class["c_name"].max()
-    sina_industy_class["code"] = sina_industy_class["code"].astype(int)
+    sina_industy_class = DataAPI.info.classification()
+    sina_industy_class["classification"] = sina_industy_class["classification"].rank(method="dense", ascending=True).astype(int)
+    class_num = sina_industy_class["classification"].max()
     frame = pd.DataFrame(0,index = np.arange(class_num)+1, columns = symbols)
     for symbol in symbols:
-        code = int(symbol[0:6])
-        this_class = sina_industy_class[sina_industy_class["code"] == code]["c_name"]
+        this_class = sina_industy_class[sina_industy_class["code"] == symbol]["classification"]
         frame.loc[this_class, symbol] = 1
     return frame
 
